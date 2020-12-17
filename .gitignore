@@ -1,0 +1,88 @@
+# PYTHON AND PIP DISTRIBUTION
+# --------------------------
+build/
+dist/
+*.egg-info/
+*__pycache__/
+*.so
+*.pyf
+
+
+# LINUX BACK-UP FILES
+# -------------------
+*~
+
+# QUAD4M INPUTS AND OUTPUTS
+# -------------------------
+*.exe
+*.acc
+*.ACC
+*.q4r
+*.dat
+*.bug
+*.stats
+*.dxf
+*.out
+
+
+# STANDARD PYTHON .GITIGNORE
+# --------------------------
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py

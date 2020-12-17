@@ -1,0 +1,12 @@
+~ It's a good idea to google the "smart" way of compiling with F2PY
+  It involves first creating a signature file ".pyf" that provides instructions
+  on how to port the Fortran arguments and outputs to python. Then,
+  a second command to compile everything together.
+
+~ The commands needed here are the following (entered in Linux terminal, in same directory as files to be compiled):
+   0) rm *.so *.pyf (the signature file creation will fail if a file exists. Deleting the .so file doesn't really matter, but I like doing it).
+   1) python3 -m numpy.f2py sim1d.f sim2d.f -m simLAS -h simLAS.pyf
+   2) python3 -m numpy.f2py -lGAF77 -c simLAS.pyf sim1d.f sim2d.f --fcompiler=gnu
+
+NOTE: this should be incredibly easy to automate using a terminal script thingy but there is too much to do in too little time...
+ 	problem for another day.
