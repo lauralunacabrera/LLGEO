@@ -18,16 +18,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Path fix for testing the modules (not needed when llgeo is installed)
-import os
-import sys
-import pathlib
-
-cpath = pathlib.Path(__file__).parent.absolute()
-rel_path = os.path.join(cpath, '../../../')
-sys.path.insert(0, os.path.abspath(rel_path))
-os.chdir(cpath)
-
 # Import LLGEO modules
 import llgeo.randfields.LAS as LAS
 

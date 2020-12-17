@@ -17,6 +17,4 @@ import llgeo.props_nonlinear.darendeli_2011 as darendeli
 params = darendeli.params(0, 1, 50, )
 help(darendeli)
 
-# %%
-
-# %%
+s# %%

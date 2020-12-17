@@ -9,21 +9,9 @@ PURPOSE:   Carries out workflow for example QUAD4M analyses to test functions
             properties: 00 Homogeneous
            
 LAST_UPDATED: 22 November 2020
-STATUS: WIP
 TO_DO:
 '''
 #%% Import modules
-
-# Path fix for testing the modules (not needed when llgeo is installed)
-import os
-import sys
-rel_path = os.path.join(os.path.dirname(__file__), '../../../')
-sys.path.insert(0, os.path.abspath(rel_path))
-
-# Change workind directory to wherever this file is saved
-import pathlib
-cpath = pathlib.Path(__file__).parent.absolute()
-os.chdir(cpath)
 
 # Import standard pacakges
 import numpy as np
