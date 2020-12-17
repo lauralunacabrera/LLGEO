@@ -1,0 +1,38 @@
+{
+	"folders":
+	[
+		{
+			// Source code
+			"name": "Product"  ,
+			"path": "../llgeo" ,
+		},
+		{
+			// Tests 
+			"name": "Tests"    ,
+			"path": "../tests" ,
+		},
+		{
+			// Library 
+			"name": "Library"    ,
+			"path": "../../LLGEO" ,
+		}
+	],
+
+	"settings":
+	{	
+		// Python
+		"python.pythonPath": "../.venv/bin/python",
+		
+		// Explorer
+		"explorer.autoReveal": false,
+		"explorer.compactFolders": false,
+		
+		// Window
+		"window.title": "Have fun :)" ,
+
+		// Editor
+		"editor.wordWrapColumn": 79,
+		"editor.codeLens": false,
+		"window.titleSeparator": "|"
+	}
+}

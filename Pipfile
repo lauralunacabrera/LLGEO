@@ -7,6 +7,7 @@ name = "pypi"
 requests = "*"
 llgeo = {editable = true, path = "."}
 ipykernel = "*"
+pylint = "*"
 
 [dev-packages]
 
