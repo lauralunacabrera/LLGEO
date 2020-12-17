@@ -23,9 +23,8 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
-from F77_to_py import simLAS as LAS
+from F77_to_py import simLAS as LAS # pylint: disable=import-error
 import numpy as np
-print(LAS.__doc__) # If you need help with how the F2PY compile code works
 
 # ------------------------------------------------------------------------------
 # Main functions
@@ -193,11 +192,6 @@ def sim2d(n1, n2, xl, yl, zm, zv, thx, thy, fnc, pa, pb, nsims, outf, seed):
         Z(1,1) is the lower left cell, Z(2,1) is the next cell in the X direct.,
         Z(1,2) is the next cell in the Y direction (upwards).
         
-    Notes
-    -----
-    * TODO: Fix unit number because that's not controllable in python. Allow
-            user to provide a path to file instead: figure it out internally.
-
     References
     ----------
     (1) Fenton & Griffiths (2008). Risk assessment in geotechnical engineering.
@@ -209,6 +203,14 @@ def sim2d(n1, n2, xl, yl, zm, zv, thx, thy, fnc, pa, pb, nsims, outf, seed):
                     i+1) for i in range(nsims)]
 
     # Only return the first n elements (all else is workspace)
-    # Zs = [z.flatten(order='F')[0:n1*n2].reshape(n1, n2, order='F') for z in Zs]
+    Zs = [z[0:n1*n2].reshape(n1, n2, order = 'F') for z in Zs]
 
     return(Zs)
+
+
+def plot_rf(ax, z):
+    ''' given a random field array and axes handles, returns a plot '''
+
+    ax.imshow(z.T, origin = 'lower')
+
+    return(ax)
