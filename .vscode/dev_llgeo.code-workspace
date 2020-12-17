@@ -3,7 +3,7 @@
 	[
 		{
 			// Source code
-			"name": "Product"  ,
+			"name": "Source"  ,
 			"path": "../llgeo" ,
 		},
 		{
@@ -22,6 +22,7 @@
 	{	
 		// Python
 		"python.pythonPath": "../.venv/bin/python",
+		"python.analysis.disabled": ["unresolved-import"],
 		
 		// Explorer
 		"explorer.autoReveal": false,
@@ -34,5 +35,7 @@
 		"editor.wordWrapColumn": 79,
 		"editor.codeLens": false,
 		"window.titleSeparator": "|"
+
+		
 	}
 }
