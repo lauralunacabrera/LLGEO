@@ -85,7 +85,7 @@ def elem_stresses(nodes, elems, k = 0.5, def_unit_w = 21000):
     elems[['sigma_v', 'sigma_v']] = np.zeros((len(elems), 2))
     
     # Iterate through element soil columns (goes left to right) 
-    for (x_coord, soil_col), y_top in zip(elems.groupby('xc'), top_ys_elems):
+    for (_, soil_col), y_top in zip(elems.groupby('xc'), top_ys_elems):
 
         # Get array of y-coords at center of element and unit weights
         # Note that in elems dataframe, elements are ordered from the bot to top
@@ -112,3 +112,81 @@ def elem_stresses(nodes, elems, k = 0.5, def_unit_w = 21000):
             elems.loc[elems['n'] == n, 'sigma_m'] = mean
 
     return(elems)
+
+
+def map_rf(elems, prop, z):
+  ''' map random field to elems dataframe.
+    
+    Purpose
+    -------
+    Given a table of elems, this function adds a column called "props" and maps
+    the values in the array "z" to the appropriate elements.
+    
+    Parameters
+    ----------
+    elems : pandas DataFrame
+        Contains information for elements, usually created by 'geometry.py'
+        At a *minumum*, must have columns: [elem_n, elem_i, elem_j].
+        IMPORTANT! Element numbering i and j must agree with z convention below.
+
+    prop : str
+        name of the property being added to elems, used as column header.
+        
+    z : numpy array
+        random field realization (generally created by randfields package)
+        it is assumed that indexing in this array is of size n1xn2 if 2D. 
+        Indexing is as follows:
+          Z(1,1) is the lower left cell.
+          Z(2,1) is the next cell in the X direction (to right).
+          Z(1,2) is the next cell in the Y direction (upwards).
+
+    Returns
+    -------
+    elems : pandas DataFrame
+        Returns elems DataFrame that was provided, with added columns 
+        for the desired property.
+        
+    Notes
+    -----
+    * Take extreme care that the indexing of elems i and j is consistent with 
+      the indexing in the z array. That is:
+        i starts left and moves rightwards
+        j starts down and move upwards
+    * Note that Z is assumed to be equispaced, which might not be true of the
+      elements. Up to you to check.
+    *   
+    '''
+  
+  # Some (really) basic error checking
+  errors = {
+             1: 'Missing i in elemes table. Please add' ,
+             2: 'Missing j in elemes table. Please add' ,
+             3: 'More elements in n1 (i) direction than available in z' ,
+             4: 'More elements in n2 (j) direction than available in z' ,
+            }
+
+  err_flags = []
+  
+  # Check that elems i exists, and that the random field's n1 is large enough
+  try:
+    max_i = np.max(elems['i'])
+  except:
+    err_flags += [1]
+  else: 
+    if max_i > np.shape(z)[0]:
+      err_flags += [3]
+
+  # Check that elems j exists, and that the random field's n2 is large enough
+  try:
+    max_j = np.max(elems['j'])
+  except:
+    err_flags += [2]
+  else: 
+    if max_j > np.shape(z)[1]:
+      err_flags += [4]
+
+  # Print out errors
+  [print(errors[f]) for f in err_flags]
+  if len(err_flags) > 0: return 0
+
+  return

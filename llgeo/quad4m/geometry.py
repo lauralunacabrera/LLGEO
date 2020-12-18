@@ -1,14 +1,16 @@
 ''' Automate the generation of QUAD4M model geometry
 
 DESCRIPTION:
-This module contains functions that help automize the geometry processing for QUAD4M analuses.
-These functions transform a DXF file to Pandas dataframes with node and elemen info for QUAD4M
+This module contains functions that help automize the geometry processing for
+QUAD4M analyses. These functions transform a DXF file to Pandas dataframes with
+node and elemen info for QUAD4M. 
+
 THIS MODULE ASSUMES VERTICAL SOIL COLUMNS!!
 
 MAIN FUNCTIONS:
 This module contains the following functions:
-    * dxf_to_dfs: returns node and element dataframes from DXF file (for QUAD4M).
-    * dfs_to_dxfs: uses node and element dataframes to output DXF with labelled geometry, as check.
+    * dxf_to_dfs
+    * dfs_to_dxfs
     
 TODOS:
 '''
@@ -37,7 +39,8 @@ def dxf_to_dfs(in_path, in_file, lay_id = 'soil_', dec = 4):
     in_file : str
         name of DXF file to be processed
     lay_id : str
-        DXF layers to be processed must include this string in their name. Defaults to "soil_"
+        DXF layers to be processed must include this string in their name.
+        Defaults to "soil_"
     dec : int
         number of decimals to round coordinates to (defaults to 4 if none given)
         
@@ -47,10 +50,9 @@ def dxf_to_dfs(in_path, in_file, lay_id = 'soil_', dec = 4):
         DataFrame with information for nodes: [n, i, j, x, y]
     elems : pandas DataFrame
         DataFrame with information for elemnts.
-        Nodes are number starting from low left corner and counterclockwise (as required by QUAD4M)
+        Nodes are number starting from low left corner and counterclockwise.
         Contents of DataFrame are as follows:
-        [element number, element i, element j, element type, element soill, x center, y center,
-        N1, N2, N3, N4]    
+        [elem_n, elem_i, elem_j, elem_t, elem_soil, xc, yc, N1, N2, N3, N4]    
         
     Notes
     -----

@@ -120,7 +120,6 @@ for rf in RFs:
     plt.figure()
     plt.imshow(rf.T)
 
-
 #%%
 # number elements
 rf = RFs[-1]
@@ -148,7 +147,6 @@ for i in ids.flatten():
     from_df = float(elems.loc[elems['n']==i, 'rand'])
     diffs.append(from_rf - from_df)
 
-
 plt.plot(diffs)
 
 
@@ -157,6 +155,5 @@ trial = np.array([[1, 5,  9, 13],
                   [2, 6, 10, 14],
                   [3, 7, 11, 15],
                   [4, 8, 12, 16]])
-
 
 # %%
