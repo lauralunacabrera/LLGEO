@@ -21,7 +21,6 @@ dist/
 *.dat
 *.bug
 *.stats
-*.dxf
 *.out
 
 
@@ -78,7 +77,6 @@ cover/
 # Translations
 *.mo
 *.pot
-
 
 # Jupyter Notebook
 .ipynb_checkpoints
