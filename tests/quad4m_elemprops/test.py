@@ -22,10 +22,32 @@ import llgeo.randfields.LAS as sim_LAS
 
 #%% Check function "elem_stresses"
 
-# Obtain model geometry from DXF file
-print('Generating geometry')
-nodes, elems = q4m_geom.dxf_to_dfs('./CAD/', '02.dxf')
+# Information on CAD Files
+dxf_path = './CAD/'
+dxf_inf  = 'test_dike.dxf'
+dxf_outf = dxf_inf.replace('.dxf', '_out.dxf')
 
+# Obtain model geometry from DXF file
+nodes, elems = q4m_geom.dxf_to_dfs(dxf_path, dxf_inf, lay_id = 'Soil_')
+
+# Now, create a test random field. As noted in docs, the random field should be
+# indexed as follows:
+#       Z(1, 1) - low left corner
+#       Z(1, 2) - next element in n2 direction, i.e., directly above
+#       Z(2, 1) - next element in n1 direction, i.e., directly to the right
+# I will create a random field where the random value is equal to the element
+# number so that it makes it easy to test the mapping.
+Z = np.arange(0, 40).reshape(8, 5, order = 'F')
+Z = Z + np.ones(np.shape(Z)) # 1-indexed fix
+
+# Now, map this random field to the elems table
+elems = q4m_props.map_rf(elems, 'mapZ', Z)
+
+# Output the results to a DXF, including the new mapped column, to check that
+# everything makes sense.
+q4m_geom.dfs_to_dxfs(dxf_path, dxf_outf, nodes, elems, elems_add_col = 'mapZ')
+
+#%%
 # Get stresses 
 elems = q4m_props.elem_stresses(nodes, elems)
 
@@ -149,11 +171,3 @@ for i in ids.flatten():
 
 plt.plot(diffs)
 
-
-#%%
-trial = np.array([[1, 5,  9, 13],
-                  [2, 6, 10, 14],
-                  [3, 7, 11, 15],
-                  [4, 8, 12, 16]])
-
-# %%
