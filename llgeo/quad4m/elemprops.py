@@ -157,36 +157,46 @@ def map_rf(elems, prop, z):
     *   
     '''
   
-  # Some (really) basic error checking
-  errors = {
-             1: 'Missing i in elemes table. Please add' ,
-             2: 'Missing j in elemes table. Please add' ,
-             3: 'More elements in n1 (i) direction than available in z' ,
-             4: 'More elements in n2 (j) direction than available in z' ,
-            }
+  # Do some basic error checking
+  err_check = map_rf_check_inputs(elems, prop, z)
 
+  if len(err_check) > 0:
+    print(err_check)
+    return 0
+
+  # Mapping
+  mapped_z = [z[i-1, j-1] for i, j in zip(elems['i'], elems['j'])] 
+  elems[prop] = mapped_z
+
+  return elems
+
+# ------------------------------------------------------------------------------
+# Helper Functions
+# ------------------------------------------------------------------------------
+
+def map_rf_check_inputs(elems, prop, z):
+  ''' Does some really basic error checking for the inputs to map_rf '''
+
+  # Some (really) basic error checking
+  errors = {1: 'Missing i or j in elemes table. Please add.' ,
+            2: 'Random field and q4m mesh do not have same num of is and js.',
+            3: 'Property name already exists in elems. Please change.'}
+
+  # Check that elems i and j exists, and that the random field is large enough
   err_flags = []
-  
-  # Check that elems i exists, and that the random field's n1 is large enough
   try:
     max_i = np.max(elems['i'])
+    max_j = np.max(elems['j'])
   except:
     err_flags += [1]
   else: 
-    if max_i > np.shape(z)[0]:
-      err_flags += [3]
+    if (max_i != np.shape(z)[0]) or (max_j != np.shape(z)[1]):
+      err_flags += [2]
 
-  # Check that elems j exists, and that the random field's n2 is large enough
-  try:
-    max_j = np.max(elems['j'])
-  except:
-    err_flags += [2]
-  else: 
-    if max_j > np.shape(z)[1]:
-      err_flags += [4]
+  # Make sure that new property doesn't already exist in elems
+  if prop in list(elems):
+    err_flags += [3]
 
   # Print out errors
-  [print(errors[f]) for f in err_flags]
-  if len(err_flags) > 0: return 0
-
-  return
+  err_out = [errors[f] for f in err_flags]
+  return err_out
