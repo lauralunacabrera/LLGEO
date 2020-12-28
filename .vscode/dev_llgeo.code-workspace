@@ -30,12 +30,13 @@
 		
 		// Window
 		"window.title": "Have fun :)" ,
+		"customWindowZoom.zoomLevelChangeValue": 0.1,
 
 		// Editor
 		"editor.wordWrapColumn": 79,
 		"editor.codeLens": false,
-		"window.titleSeparator": "|"
-
+		"window.titleSeparator": "|",
+	
 		
 	}
 }
