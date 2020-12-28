@@ -22,7 +22,7 @@ import ezdxf as ez
 import warnings
 
 warnings.simplefilter('default')
-warnings.filterwarnings('ignore', category=Deprecation)
+warnings.filterwarnings('ignore', category = DeprecationWarning)
 
 # ------------------------------------------------------------------------------
 # Main Functions
@@ -393,7 +393,8 @@ def get_node_coords(lines, dec):
     
     '''
     # Loop through lines and get coordinates
-    all_xy = np.empty((0,2)) # Initialize array    
+    all_xy = np.empty((0,2)) # Initialize array
+
     for line in lines:
         points = line.get_points('xy')
         xy = np.array([[p[0], p[1]]  for p in points])
