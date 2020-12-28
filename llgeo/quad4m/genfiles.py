@@ -6,7 +6,7 @@ the program can be automized.
 
 MAIN FUNCTIONS:
 This module contains the following functions:
-    * gen_QUAD4M_q4r: makes QUAD4M input file based on settings, elems, & nodes.
+    * gen_q4r: makes QUAD4M input file based on settings, elems, & nodes.
 '''
 
 # ------------------------------------------------------------------------------
@@ -18,7 +18,7 @@ import pandas as pd
 # ------------------------------------------------------------------------------
 # Main Functions
 # ------------------------------------------------------------------------------
-def gen_QUAD4M_q4r(Q, elems, nodes, out_path, out_file):
+def gen_q4r(Q, elems, nodes, out_path, out_file):
     ''' generates QUAD4M input file based on settings, elements, and nodes.
     
     Purpose

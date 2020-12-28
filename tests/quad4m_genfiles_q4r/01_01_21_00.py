@@ -164,7 +164,7 @@ Q = {
 #%%
 print('Generating file')
 model_id = '01_01_21_00'
-gfile.gen_QUAD4M_q4r(Q, elems, nodes, out_path = '',
+gfile.gen_q4r(Q, elems, nodes, out_path = '',
                             out_file = model_id+'.q4r')
 print('All done!')
 
