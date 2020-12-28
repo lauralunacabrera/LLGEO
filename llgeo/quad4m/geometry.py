@@ -11,15 +11,18 @@ MAIN FUNCTIONS:
 This module contains the following functions:
     * dxf_to_dfs
     * dfs_to_dxfs
-    
-TODOS:
 '''
+
 # ------------------------------------------------------------------------------
 # Import Modules
 # ------------------------------------------------------------------------------
 import numpy as np
 import pandas as pd
 import ezdxf as ez
+import warnings
+
+warnings.simplefilter('default')
+warnings.filterwarnings('ignore', category=Deprecation)
 
 # ------------------------------------------------------------------------------
 # Main Functions
@@ -29,18 +32,21 @@ def dxf_to_dfs(in_path, in_file, lay_id = 'soil_', dec = 4):
     
     Purpose
     -------
-    Given a DXF path and file name, it returns two DataFrame tables: one with node
-    information and one for element information.
+    Given a DXF path and file name, it returns two DataFrame tables: one with
+    node information and one for element information.
     
     Parameters
     ----------
     in_path : str
         path to directory containing DXF file of interest
+    
     in_file : str
         name of DXF file to be processed
+    
     lay_id : str
         DXF layers to be processed must include this string in their name.
         Defaults to "soil_"
+    
     dec : int
         number of decimals to round coordinates to (defaults to 4 if none given)
         
@@ -48,6 +54,7 @@ def dxf_to_dfs(in_path, in_file, lay_id = 'soil_', dec = 4):
     -------
     nodes : pandas DataFrame
         DataFrame with information for nodes: [n, i, j, x, y]
+    
     elems : pandas DataFrame
         DataFrame with information for elemnts.
         Nodes are number starting from low left corner and counterclockwise.
@@ -56,7 +63,7 @@ def dxf_to_dfs(in_path, in_file, lay_id = 'soil_', dec = 4):
         
     Notes
     -----
-    * Objects in modelspace must all be LWPOLYLINES. No other obejcts will be considered.
+    * Elements must all be LWPOLYLINES. No other obejcts will be examined.
     * Only works for vertical soil columns attached horizontally
     '''
     
@@ -66,56 +73,71 @@ def dxf_to_dfs(in_path, in_file, lay_id = 'soil_', dec = 4):
     
     # Get soil layers of interst
     soil_layers = [layer.dxf.name for layer in doc.layers
-                   if 'soil_' in layer.dxf.name]
+                   if lay_id in layer.dxf.name]
 
+    # Raise exception if no layers match lay_id
+    if len(soil_layers) == 0:
+        raise Exception('Geometry: no layers in DXF contain lay_id')
+        
     # Find polylines in msp and query by layer
     lines_by_layer = msp.query('LWPOLYLINE').groupby('layer') #dict keys=layer
     
-    # Check whether there are soil layers without any elements
-    checked_soil_layers = []
-    for lay in soil_layers:
-        if lay in lines_by_layer.keys():
-            checked_soil_layers += [lay]
-        else:
-            print('Warning! Theres no elements in DXF layer: ' + lay)
-    
-    # Extract polylines ONLY in soil layers
+    # Extract polylines that are saved in soil layers
     soil_lines = []
-    for layer in checked_soil_layers:
-        soil_lines += lines_by_layer[layer]
+
+    for lay in soil_layers:
+        # Warn the user if there is a soil layer that doesn't have polylines
+        if lay not in lines_by_layer.keys():
+            message = 'No LWPOLYLINES in DXF layer ' + lay
+            warnings.showwarning(message,
+                                 category = UserWarning,
+                                 filename = 'geometry.py',
+                                 lineno   = '') 
+            continue
+
+        # Otherwise, extract polylines in the layer
+        else:
+            soil_lines += lines_by_layer[lay]
 
     # Get node information
     nodes = get_nodes_df(soil_lines, dec)
     
     # Get element information
     elems = get_elems_df(soil_lines, nodes, dec)
+
     return(nodes, elems) 
     
     
-def dfs_to_dxfs(out_path, out_file, nodes, elems, clrs = [1, 2, 3, 4]):
-    ''' given node and element dataframes, prints a DXF summarizing the informaiton (as a check).
+def dfs_to_dxfs(out_path, out_file, nodes, elems, elems_add_col = 0):
+    ''' Given node and element dfs, prints labelled mesh to DXF file as a check.
     
     Purpose
     -------
-    Given node and element dataframes (see dxf_to_dfs above), creates a DXF file summarizing
-    the given information. This is done to check that all information is processed correctly.
+    Given node and element dfs, prints labelled mesh to DXF file. This is done
+    to check that all information was processed correctly.
     
     Parameters
     ----------
     out_path : str
-        path to directory where output DXF will be saved
+        Path to directory where output DXF will be saved
+
     out_file : str
-        name of DXF file to store outputs
+        Name of DXF file to store outputs
+
     nodes : pandas DataFrame
         DataFrame with information for nodes: [n, i, j, x, y]
+
     elems : pandas DataFrame
         DataFrame with information for elemnts.
-        Nodes are number starting from low left corner and counterclockwise (as required by QUAD4M)
+        Nodes are number starting from low left corner and counterclockwise.
         Contents of DataFrame are as follows:
-        [element number, element i, element j, element type, element soill, x center, y center,
-        N1, N2, N3, N4]    
-    clrs : list of ints
-        Colors to be used for layers (defaults to [1 2 3 4])
+        [elem_n, elem_i, elem_j, elem_t, elem_soil, xc, yc, N1, N2, N3, N4]    
+    
+    elems_add_col : str
+        Must correspond to a column in elems dataframe. If passed, it will add 
+        the values in the column as text onto the DXF. Defaults to 0, so no 
+        extra information is printed. (Used mostly to ensure random field 
+        mapping was done correctly). 
         
     Returns
     -------
@@ -132,36 +154,57 @@ def dfs_to_dxfs(out_path, out_file, nodes, elems, clrs = [1, 2, 3, 4]):
     
     # Add needed layers
     lays = ['Geometry', 'Elem_Geom', 'Elem_Info', 'Node_Geom']
-    [dwg.layers.new(name = n, dxfattribs={'color': c}) for n, c in zip(lays, clrs)]
+    clrs = [1, 2, 3, 4]
+
+    if elems_add_col:
+        lays += ['Extr_Info']
+        clrs += [6]
+
+    [dwg.layers.new(name=n, dxfattribs={'color':c}) for n, c in zip(lays, clrs)]
     
     # Loop through elements and draw them
     for _, elem in elems.iterrows():
-        masks = [nodes['node_n'] == elem[s]  for s in ['N1','N2','N3','N4', 'N1']]
-        points = [(float(nodes.loc[m, 'x']), float(nodes.loc[m, 'y'])) for m in masks]
+
+        # Draw mesh lines
+        masks = [nodes['node_n'] == elem[s] for s in ['N1','N2','N3','N4','N1']]
+        points = [(float(nodes.loc[m, 'x']), float(nodes.loc[m, 'y']))
+                  for m in masks]
         msp.add_lwpolyline(points, dxfattribs={'layer': 'Geometry'})
 
+        # Draw labels for elem_n, elem_i, and elem_j
         label = '{:d} ({:d}, {:d})'.format(elem['n'], elem['i'], elem['j'])
-        msp.add_text(label, dxfattribs={'layer': 'Elem_Geom', 'height': 0.05}).\
-            set_pos((- 0.2 + elem['xc'], - 0.05 + elem['yc']))
+        props = {'layer': 'Elem_Geom', 'height': 0.05}
+        pos   = (- 0.2 + elem['xc'], - 0.05 + elem['yc'])
+        msp.add_text(label, dxfattribs = props).set_pos(pos)
 
+        # Draw labels for soil type and element type
         label = elem['s'] + '_' + elem['t']
-        msp.add_text(label, dxfattribs={'layer': 'Elem_Info', 'height': 0.05}).\
-            set_pos((- 0.2 + elem['xc'], + 0.05 + elem['yc']))
+        props = {'layer': 'Elem_Info', 'height': 0.05}
+        pos   = (- 0.2 + elem['xc'], + 0.05 + elem['yc'])
+        msp.add_text(label, dxfattribs=props).set_pos(pos)
+
+        # If requested, draw additional info at element centers
+        if elems_add_col:
+            label = elem[elems_add_col]
+            props = {'layer': 'Extr_Info', 'height': 0.05}
+            pos   = (- 0.2 + elem['xc'], - 0.15 + elem['yc'])
+            msp.add_text(label, dxfattribs = props).set_pos(pos)
             
     # Loop through nodes and draw them
     for _, node in nodes.iterrows():
         label = '{:02.0f} ({:02.0f}, {:02.0f})'.format(node['node_n'],
-                                                node['node_i'],
-                                                node['node_j'])
-        msp.add_text(label, dxfattribs={'layer': 'Node_Geom', 'height': 0.03}).\
-            set_pos((node['x'] + 0.02, node['y'] + 0.02))
+                                                       node['node_i'],
+                                                       node['node_j'])
+        props = {'layer': 'Node_Geom', 'height': 0.03}
+        pos   = (node['x'] + 0.02, node['y'] + 0.02)
+        msp.add_text(label, dxfattribs = props).set_pos(pos)
             
     # Save and return
     dwg.saveas(out_path + out_file)
 
 
 # ------------------------------------------------------------------------------
-# Helper Functions ~ nothing to see here :)
+# Helper Functions
 # ------------------------------------------------------------------------------
 def get_nodes_df(lines, dec):
     ''' gets node dataframe from list of LWPOLYLINES
@@ -185,7 +228,7 @@ def get_nodes_df(lines, dec):
         
     Notes
     -----
-    * Objects in modelspace must all be LWPOLYLINES. No other obejcts will be considered.
+    * Elements must all be LWPOLYLINES. No other obejcts will be examined.
     * Only works for vertical soil columns attached horizontally
     '''
     
@@ -230,29 +273,31 @@ def get_elems_df(lines, nodes, dec):
     
     Purpose
     -------
-    Given a list of LWPOLYLINES and a nodes DataFrame, returns DataFrame with element information.
-    This includes node number, i, j, type, soil, x center, ycenter, N1, N2, N3, N4]
-    Nodes are number starting from low left corner and counterclockwise (as required by QUAD4M)
+    Given a list of LWPOLYLINES and a nodes DataFrame, returns DataFrame with
+    element information.
     
     Parameters
     ----------
     lines : list of LWPOLYLINES
         lines containing coordinates to be extracted
-    nodes : pandas dataframe
-        contains information for nodes (see function get_nodes_df above).
+
+    nodes : pandas DataFrame
+        DataFrame with information for nodes: [n, i, j, x, y]
+
     dec : int
         number of decimal places to incude in coordinate table
         
     Returns
     -------
     elems : pandas DataFrame
-        DataFrame with information for elemnts:
-            [element number, element i, element j, element type, element soill, x center, y center,
-             N1, N2, N3, N4]
+        DataFrame with information for elemnts.
+        Nodes are number starting from low left corner and counterclockwise.
+        Contents of DataFrame are as follows:
+        [elem_n, elem_i, elem_j, elem_t, elem_soil, xc, yc, N1, N2, N3, N4]   
         
     Notes
     -----
-    * Objects in modelspace must all be LWPOLYLINES. No other obejcts will be considered.
+    * Elements must all be LWPOLYLINES. No other obejcts will be examined.
     * Only works for vertical soil columns attached horizontally
     '''
     
@@ -317,8 +362,8 @@ def get_elems_df(lines, nodes, dec):
         elems = elems.append(out, ignore_index = True)
     
     # Sort for easier handling, populate element numbers, and return
-    elems = elems.sort_values(by = ['i', 'j'])
-    elems['n'] = 1 + np.arange(0, len(elems)) # 1-indexed!!!
+    elems = elems.sort_values(by = ['j', 'i']) # F-ordered (column major)
+    elems['n'] = 1 + np.arange(0, len(elems))  # 1-indexed!!!
     return(elems)
     
     
@@ -327,7 +372,7 @@ def get_node_coords(lines, dec):
     
     Purpose
     -------
-    Given a list of LWPOLYLINES, returns (n x 2) numpy array with x and y coordinates.
+    Given a list of LWPOLYLINES, returns (nx2) np array with x and y coords.
     Will return UNIQUE coordinates rounded to "dec" decimal places.
     
     Parameters
@@ -344,7 +389,7 @@ def get_node_coords(lines, dec):
         
     Notes
     -----
-    * Objects in modelspace must all be LWPOLYLINES. No other obejcts will be considered.
+    * Elements must all be LWPOLYLINES. No other obejcts will be examined.
     
     '''
     # Loop through lines and get coordinates
@@ -357,3 +402,4 @@ def get_node_coords(lines, dec):
     # Remove duplicates and return
     xy = np.unique(all_xy, axis = 0)
     return(xy)
+
