@@ -10,16 +10,18 @@ FUNCTIONS:
 This module contains the following functions:
     * params: calculates parameters for Darendeli curves, based on soil props
     * curves: returns Darendeli curves, based on calcualted params
-
-TODOS:
-    * Review documentations cause i switched things around when I added
-      darem_params
+    
 '''
 # ------------------------------------------------------------------------------
 # Import Modules
 # ------------------------------------------------------------------------------
-import numpy as np
 
+# Standard libraries
+import numpy as np
+import warnings
+
+# LLGEO Modules
+import llgeo.utilities.check_errors as llgeo_errs
 
 # ------------------------------------------------------------------------------
 # Main Functions
@@ -43,8 +45,7 @@ def params(PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
     N (-) : float, optional
         Number of loading cycles. Not critical, defaults to 10 cycles.
     load_freq (Hz) : float, optional
-        Loading frequency. Not critical, defaults to 1 Hz.
-    type 
+        Loading frequency. Not critical, defaults to 1 Hz. 
 
     Returns
     -------
@@ -170,3 +171,81 @@ def curves(sstrn, a, b, D_min, sstrn_r):
 # ------------------------------------------------------------------------------
 # Helper Functions - nothing to see here :)
 # ------------------------------------------------------------------------------
+
+def check_darendeli_args(PI, sigp_o, OCR, N, load_freq, ctype):
+    ''' Does basic error checking for darendeli arguments
+    TODO: integrate this into the curves, figure out how to handle logging'''
+
+    # Reference to Darendeli's thesis for error references
+    ref_01 = 'Darendeli (2001) Development of a New Family of Normalized ...'
+
+    # Initialize lists that will contain conditions, and messages
+    conds = [] # Conditions under which error is flagged
+    mssgs = [] # Error message to be displayed
+    terrs = [] # Type of error (1 = warning, 0 = fatal)
+
+    # Plasticity index must be greater than zero
+    conds += [PI < 0]
+    terrs += ['fatal']
+    mssgs += ['\n\n\t PI = {:4.1f} %'.format(PI) + \
+              '\n\t\t Must be greater than or equal to zero']
+
+    # Mean confining stress must be greater than zero
+    conds += [sigp_o <= 0]
+    terrs += ['fatal']
+    mssgs += ['\n\n\t sigp_o = {:6.2f} atm'.format(sigp_o) + \
+              '\n\t\t Must be greater than zero']
+
+    # OCR must be greater than zero
+    conds += [OCR <= 0]
+    terrs += ['fatal']
+    mssgs += ['\n\n\t OCR = {:6.2f} '.format(OCR) + \
+              '\n\t\t Must be greater than zero']
+
+    # Number of cycles must be greater than zero
+    conds += [N <= 0]
+    terrs += ['fatal']
+    mssgs += ['\n\n\t N = {:6.2f} '.format(N) + \
+              '\n\t\t Must be greater than zero']
+
+    # Load frequency must be greater than zero
+    conds += [load_freq <= 0]
+    terrs += ['fatal']
+    mssgs += ['\n\n\t load_freq = {:6.2f} Hz'.format(load_freq) + \
+              '\n\t\t Must be greater than zero']
+
+    # Check that the type of curves are the mean
+    conds += [ctype != 'mean']
+    terrs += ['fatal']
+    mssgs += ['\n\n\t ctype = {:s}'.format(ctype) + \
+              '\n\t\t So far, only mean curves have been coded :(']
+
+    # Limit on database for mean confining stress
+    conds += [sigp_o > 27.2]
+    terrs += ['warn']
+    mssgs += ['\n\n\t sigp_o = {:6.2f} atm.'.format(sigp_o)         + \
+              '\n\t\t Darendeli tested up to stresses of 27.2 atm'  + \
+              '\n\t\t See Figure 3.9, Page 42, in ref: '            + \
+              '\n\t\t ' + ref_01 ]
+
+    # Limit on database for plasticity index
+    conds += [PI > 132]
+    terrs += ['warn']
+    mssgs += ['\n\n\t PI = {:4.1f} %'.format(PI)                       + \
+              '\n\t\t Darendeli test up to plasticity index of 132% '  + \
+              '\n\t\t See Figure 3.11, Page 44, in ref: '              + \
+              '\n\t\t ' + ref_01]
+
+    # Limit on database for overconsolidation ratio
+    conds += [OCR > 8]
+    terrs += ['warn']
+    mssgs += ['\n\n\t OCR = {:4.1f} %'.format(OCR)                        +\
+              '\n\t\t Darendeli test up to overconsolidation ratios of 8' +\
+              '\n\t\t See Figure 3.19, Page 51, in ref: '                 +\
+              '\n\t\t ' + ref_01]
+
+    # Print out warnings if necessary
+    header    = '\n Errors found in parameters to generate Darendeli curves.\n'
+    fatal_flag = llgeo_errs.log_errs(header, conds, mssgs, terrs)
+
+    return fatal_flag
