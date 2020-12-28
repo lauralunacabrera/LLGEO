@@ -6,12 +6,9 @@ the program can be automized.
 
 MAIN FUNCTIONS:
 This module contains the following functions:
-    * gen_QUAD4M_q4r generates QUAD4M input file based on settings, elements, and nodes.
-    
-TODOS:
-    *** (IMPORTANT) gen_QUAD4M_q4r IS NOT COMPLETE!!!
-        SEISMIC COEFFICIENT LINES AND KSAV ARE NOT DONE
+    * gen_QUAD4M_q4r: makes QUAD4M input file based on settings, elems, & nodes.
 '''
+
 # ------------------------------------------------------------------------------
 # Import Modules
 # ------------------------------------------------------------------------------

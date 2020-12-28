@@ -11,10 +11,8 @@ MAIN FUNCTIONS:
 This module contains the following functions:
     * simLAS1D: generates 1D realizations of a random field using LAS
     * simLAS2D: generates 2D realizations of a random field using LAS
-    
-TODOS:
-    * Remove the need for unit numbers... need to give this some thought.
 '''
+
 # ------------------------------------------------------------------------------
 # Import Modules
 # ------------------------------------------------------------------------------

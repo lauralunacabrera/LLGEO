@@ -8,7 +8,6 @@ MAIN FUNCTIONS:
 This module contains the following functions:
     * run_QUAD4M: runs one instance of QUAD4MU, given all input files and dirs
 
-TODOS:
 '''
 import subprocess as sub
 import os

@@ -9,7 +9,6 @@ MAIN FUNCTIONS:
 This module contains the following functions:
     * elem_stresses: adds vertical and mean effective stress to elems dataframe
     
-TODOS:
 '''
 # ------------------------------------------------------------------------------
 # Import Modules
