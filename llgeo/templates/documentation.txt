@@ -10,8 +10,6 @@ MAIN FUNCTIONS:
 This module contains the following functions:
     * func_name: one-line description of the function
 
-TODOS:
-	* List the TODOs here
 '''
 
 
