@@ -21,7 +21,7 @@ import numpy as np
 # Main Functions
 # ------------------------------------------------------------------------------
 
-def arr2str_F70(data, cols, width, dec = False):
+def arr2str_F70(data, cols, width, dec = False, space = 0):
     ''' Converts np array to a string using F70-like formatting.
 
     Purpose
@@ -46,7 +46,11 @@ def arr2str_F70(data, cols, width, dec = False):
     dec : int (optional) 
         number of decimals to include. When none passed, defaults to returning
         as many decimals as fit within specified width.
-        
+
+    space : int (optional)
+        blank characters to keep between adjecent numbers
+        THIS ARGUMENT WILL ONLY BE USED IF DEC = FALSE.
+
     Returns
     -------
     str_out : str
@@ -68,15 +72,15 @@ def arr2str_F70(data, cols, width, dec = False):
     for i, num in enumerate(data):
 
         # Add a line break if necessary
-        if i % cols == 0:
+        if (i > 0) & (i % cols == 0):
             str_out += '\n'
         
-        str_out += num2str_F70(num, width, dec) 
+        str_out += num2str_F70(num, width, dec, space) 
 
     return(str_out)
 
 
-def num2str_F70(num, width, dec = False):
+def num2str_F70(num, width, dec = False, space = 0):
     ''' Converts a number to a string using F70-like formatting.
 
     Purpose
@@ -98,6 +102,10 @@ def num2str_F70(num, width, dec = False):
     dec : int (optional) 
         number of decimals to include. When none passed, defaults to returning
         as many decimals as fit within specified width.
+
+    space : int (optional)
+        blank characters to keep between adjecent numbers
+        THIS ARGUMENT WILL ONLY BE USED IF DEC = FALSE.
         
     Returns
     -------
@@ -116,11 +124,11 @@ def num2str_F70(num, width, dec = False):
 
     # Raise error if digits don't fit in specified width
     if digits > width:
-        raise Exception('Digits > width | Use scientific notation?')
+        raise Exception('Digits > width | Use scientific?')
 
-    # Raise error if digits + dec don't fit in specified width
-    if digits + dec + 1 > width:
-        raise Exception('Digits + Dec > width | Use scientific notation? ')
+    # Raise error if digits + dec + space don't fit in specified width
+    if digits + dec + space + 1 > width:
+        raise Exception('Digits + dec + space > width | Use scientific?')
 
     # Specify lpad and prec if exact digits were required
     if dec:
@@ -129,12 +137,12 @@ def num2str_F70(num, width, dec = False):
 
     # Specify lpad and prec if there are no decimals in digit            
     elif digits == len(str(num)):
-        lpad = width
+        lpad = width - space
         prec = 0
 
     # Specify lapd and prec if there are decimals
     else:
-        prec = max(0, width - digits - 1)
+        prec = max(0, width - space - digits - 1)
         lpad = max(0, width - prec - 1)
 
     # Convert digit to string (note that pad includes digits!!) and output
