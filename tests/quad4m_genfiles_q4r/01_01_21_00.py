@@ -19,7 +19,7 @@ import pandas as pd
 
 # Import LLGEO modules
 import llgeo.quad4m.geometry as geom
-import llgeo.quad4m.genfiles as gfile
+import llgeo.quad4m.genfiles as q4m_files
 
 #%% STEP #1 --------------------------------------------------------------------
 #   Obtain model geometry from DXF file
@@ -164,7 +164,7 @@ Q = {
 #%%
 print('Generating file')
 model_id = '01_01_21_00'
-gfile.gen_q4r(Q, elems, nodes, out_path = '',
+q4m_files.gen_q4r(Q, elems, nodes, out_path = '',
                             out_file = model_id+'.q4r')
 print('All done!')
 
