@@ -249,7 +249,7 @@ def gen_dat(soil_curves, out_path, out_file):
     Notes
     -----
     * The F70/F90 formatting may be slow because it was coded in a quick-fix
-      mindset... and when I was tired ¯\_(ツ)_/¯
+      mindset... and when I was tired ¯|_(ツ)_|¯
 
     References
     ----------
