@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 
 # Import LLGEO modules
 import llgeo.quad4m.geometry as q4m_geom
-import llgeo.quad4m.genfiles as q4m_gfile
+import llgeo.quad4m.genfiles as q4m_files
 import llgeo.quad4m.elemprops as q4m_props
 import llgeo.randfields.LAS as sim_LAS
 
