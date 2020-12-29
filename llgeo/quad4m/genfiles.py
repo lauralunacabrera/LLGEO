@@ -12,14 +12,18 @@ This module contains the following functions:
 # ------------------------------------------------------------------------------
 # Import Modules
 # ------------------------------------------------------------------------------
+# Standard libaries
 import numpy as np
 import pandas as pd
+
+# LLGEO modules
+import llgeo.utilities.formatters as fff
 
 # ------------------------------------------------------------------------------
 # Main Functions
 # ------------------------------------------------------------------------------
 def gen_q4r(Q, elems, nodes, out_path, out_file):
-    ''' generates QUAD4M input file based on settings, elements, and nodes.
+    ''' generates QUAD4M input file (.q4r) from given settings, elems, and nodes.
     
     Purpose
     -------
@@ -31,16 +35,20 @@ def gen_q4r(Q, elems, nodes, out_path, out_file):
     ----------
     Q : dict
         dictionary with settings for QUAD4M analyses. See ref (1).
+
     elems : pandas DataFrame
         DataFrame with information for elements (initialized in geometry module)
         Minimum required columns are:
-            n, N1, N2, N3, N4, s_num, unit_w, po, Gmax, G, XL, LSTR
+            [ n, N1, N2, N3, N4, s_num, unit_w, po, Gmax, G, XL, LSTR ]
+
     nodes : pandas DataFrame
         DataFrame with information for nodes (initialized in geometry module)
         Minimum required columns are:
-            node_n, x, y, BC, OUT, X2IH, X1IH, XIH, X2IV, X1IV, XIV
+            [ node_n, x, y, BC, OUT, X2IH, X1IH, XIH, X2IV, X1IV, XIV ]
+
     out_path : str
         path to directory where output will be saved
+
     out_file : str
         name of text file to store outputs
 
@@ -64,7 +72,8 @@ def gen_q4r(Q, elems, nodes, out_path, out_file):
 
     # Error Checking (only does basic stuff... I'm assuming user is smart)
     # --------------------------------------------------------------------------
-    
+    # TODO: change to logging?
+
     # Check that all required node and element information is present
     req_elem_cols = ['n', 'N1', 'N2', 'N3', 'N4',
                      's_num', 'unit_w','po', 'Gmax', 'G', 'XL', 'LSTR']
@@ -203,9 +212,132 @@ def gen_q4r(Q, elems, nodes, out_path, out_file):
 
     # Print lines to a file and return 
     # --------------------------------------------------------------------------
-    with open(out_path+out_file, 'w') as file:
-        [file.write(l+'\n') for l in L]
-        file.close()
+    with open(out_path+out_file, 'w') as q4r_file:
+        [q4r_file.write(line + '\n') for line in L]
+        q4r_file.close()
+
+    return L
+    
+
+def gen_dat(soil_curves, out_path, out_file):
+    ''' generates QUAD4M soil data file (.dat) based on given soil curves.
+    
+    Purpose
+    -------
+    Given a list of "soil_curves", this creates an file (out_path+out_file) that
+    can be used as soil properties input for the ground response analysis
+    software QUAD4M (REF 1).
+    
+    Parameters
+    ----------
+    soil_curves : list of dict
+        list containing one dictionary per soil curve.
+        Keys MUST include:
+            { 'S_name', 'S_desc', 'G_strn', 'G_mred', 'D_strn', 'D_damp'}
+
+    out_path : str
+        path to directory where output will be saved.
+
+    out_file : str
+        name of text file to store outputs (generally ending in .dat)
+
+    Returns
+    -------
+    L : list of str
+        List of strings corresponding to QUAD4M soil data file that was printed.
+        
+    Notes
+    -----
+    * The F70/F90 formatting may be slow because it was coded in a quick-fix
+      mindset... and when I was tired ¯\_(ツ)_/¯
+
+    References
+    ----------
+    (1) Hudson, M., Idriss, I. M., & Beikae, M. (1994). User’s Manual for
+        QUAD4M. National Science Foundation.
+            See: Fortran code describing inputs (Pgs. A-3 to A-5)
+
+    '''
+    # Some (extremely) basic error checking
+    # ----------------------------------------------------------------------
+    # TODO: change to logging?
+    # TODO: add more checks and create separate function?
+    # Checks to complete:
+    #   0) check that number of properties < 5-digit number
+    #   1) ensure dictionary keys match requirements
+    #   2) ensure that G_strn and G_mred are the same size
+    #   3) ensure that D_strn and D_damp are the same size
+    #   4) make sure that G_strn, G_mred, D_strn, and D_damp values
+    #      don't exceed formatting requirements
+    #   5) warn if soil name or description are too large
+    check_keys = ['S_name','S_desc','G_strn','G_mred','D_strn','D_damp']
+    
+    for soil in soil_curves:
+        if not all (key in soil for key in check_keys):
+            raise Exception('Soil curves missing dictionary keys.')
+        
+        if len(soil['G_strn']) != len(soil['G_mred']):
+            raise Exception('Modulus reduction curve has unequal array lenghts')
+    
+        if len(soil['D_strn']) != len(soil['D_damp']):
+            raise Exception('Damping curve has unequal array lenghts')
+
+    # Initialize lines by adding number of soil curves.
+    NUMPROPS = len(soil_curves)
+    L = ['{:5d}'.format(NUMPROPS)]
+
+    # Format specifications that will be used to create the file lines.
+    fmt01 = {'cols': 8, 'width': 10, 'space': 2}
+    fmt02 = '{N:5d}  | {T:^18s} | {S:^8s} | {D:^20s} | '
+    fmt03 = '{lbl:-<{W}}'
+    clim  = fmt01['cols'] * fmt01['width'] # max characters per line
+
+    # Iterate through given soil_curves and add relevant lines
+    
+    for soil in soil_curves:
+    
+        # THIS PART MAY BECOME AN ISSUE IN THE FUTURE!
+        # ----------------------------------------------------------------------
+        # Note: I'm still deciding on how to approach data handling, which means
+        #       the structure of inputs is likely to change.  I am adding the
+        #       next few lines to make it easier fix in the future if neeeded.
+        # TODO: Figure out the final configuration for inputs to here.
+
+        S_name = soil['S_name'] 
+        S_desc = soil['S_desc']
+        G_strn = soil['G_strn']
+        G_mred = soil['G_mred']
+        D_strn = soil['D_strn']
+        D_damp = soil['D_damp']
+
+        # Add modulus reduction curve
+        # ---------------------------------------------------------------------- 
+        lbl = fmt02.format(N = len(G_strn),
+                           T = 'MODULUS REDUCTION',
+                           S = S_name,
+                           D = S_desc)
+
+        L += [fmt03.format(lbl = lbl, W = clim) ]  # Header
+        L += [ fff.arr2str_F70(G_strn, **fmt01) ]  # Shear strain
+        L += [ fff.arr2str_F70(G_mred, **fmt01) ]  # G/Gmax
+
+        # Add damping curve
+        # ----------------------------------------------------------------------
+        lbl = fmt02.format(N = len(D_strn),
+                           T = 'ELEMENT DAMPING',
+                           S = S_name,
+                           D = S_desc)
+
+        L += [fmt03.format(lbl = lbl, W = clim) ]  # Header
+        L += [ fff.arr2str_F70(D_strn, **fmt01) ]  # Shear strain
+        L += [ fff.arr2str_F70(D_damp, **fmt01) ]  # Damping
+
+
+    # Print lines to a file and return 
+    # --------------------------------------------------------------------------
+    with open(out_path + out_file, 'w') as dat_file:
+        [dat_file.write(line + '\n') for line in L]
+        dat_file.close()
 
     return L
 
