@@ -10,7 +10,8 @@ THIS MODULE ASSUMES VERTICAL SOIL COLUMNS!!
 MAIN FUNCTIONS:
 This module contains the following functions:
     * dxf_to_dfs
-    * dfs_to_dxfs
+    * dfs_to_dxf
+    * get_geom_summary
 '''
 
 # ------------------------------------------------------------------------------
@@ -103,12 +104,12 @@ def dxf_to_dfs(in_path, in_file, lay_id = 'soil_', dec = 4):
     nodes = get_nodes_df(soil_lines, dec)
     
     # Get element information
-    elems = get_elems_df(soil_lines, nodes, dec)
+    elems = get_elems_df(soil_lines, nodes, dec, lay_id)
 
-    return(nodes, elems) 
+    return(nodes, elems)
     
     
-def dfs_to_dxfs(out_path, out_file, nodes, elems, elems_add_col = 0):
+def dfs_to_dxf(out_path, out_file, nodes, elems, elems_add_col = 0):
     ''' Given node and element dfs, prints labelled mesh to DXF file as a check.
     
     Purpose
@@ -203,6 +204,58 @@ def dfs_to_dxfs(out_path, out_file, nodes, elems, elems_add_col = 0):
     dwg.saveas(out_path + out_file)
 
 
+def get_mesh_sizes(nodes, elems):
+    ''' Gets mesh size: width, height, number of elems, average elem size.
+        
+    Purpose
+    -------
+    Given node and elems dataframes, this determines:
+        * Height and width of the overall mesh
+        * Number of elements in the mesh
+        * The average element width and element height
+        
+    Parameters
+    ----------
+    nodes : pandas DataFrame
+        DataFrame with information for nodes.
+        Here it must contain, at a minimum:
+            [node_n, x, y]
+    
+    elems : pandas DataFrame
+        DataFrame with information for elemnts.
+        Nodes are number starting from low left corner and counterclockwise.
+        Here it must contain, at a minimum:
+            [N1, N2, N3, N4]    
+       
+    Returns
+    -------
+    mesh_w : float
+        Maximum width of the model (max x_coord - min x_coord)
+
+    mesh_h : float
+        Maximum height of the model (max y_coord - min y_coord)
+    
+    nelm : int
+        Number of elements in the mesh
+
+    elem_w : float
+        Average width of the elements in the mesh
+ 
+    elem_h : float
+        Average height of the elements in the mesh
+
+    '''
+
+    # Get mesh width. height, and number of elements
+    mesh_w = np.ptp(nodes['x']) # ptp = point to point (max - min)
+    mesh_h = np.ptp(nodes['y'])
+    nelm   = len(elems)
+    elem_w = np.average(elems['w'])
+    elem_h = np.average(elems['h'])
+
+    return mesh_w, mesh_h, nelm, elem_w, elem_h
+
+
 # ------------------------------------------------------------------------------
 # Helper Functions
 # ------------------------------------------------------------------------------
@@ -268,7 +321,7 @@ def get_nodes_df(lines, dec):
     return(nodes)
 
     
-def get_elems_df(lines, nodes, dec):
+def get_elems_df(lines, nodes, dec, lay_id):
     ''' gets element dataframe from list of LWPOLYLINES and nodes DataFrame
     
     Purpose
@@ -293,15 +346,16 @@ def get_elems_df(lines, nodes, dec):
         DataFrame with information for elemnts.
         Nodes are number starting from low left corner and counterclockwise.
         Contents of DataFrame are as follows:
-        [elem_n, elem_i, elem_j, elem_t, elem_soil, xc, yc, N1, N2, N3, N4]   
+        ['n', 'i', 'j', 't', 's', 'w', 'h', 'xc', 'yc', 'N1','N2','N3','N4']   
         
     Notes
     -----
     * Elements must all be LWPOLYLINES. No other obejcts will be examined.
     * Only works for vertical soil columns attached horizontally
     '''
-    
-    cols = ['n', 'i', 'j', 't', 's', 'xc', 'yc', 'N1', 'N2', 'N3', 'N4']
+    # Columns are: element number, i, j, type (quad or tri), soil, width,
+    #              height, x center, y center, node numbers in CCW direction.
+    cols = ['n', 'i', 'j', 't', 's', 'w', 'h', 'xc', 'yc', 'N1','N2','N3','N4']
     elems = pd.DataFrame([], columns = cols)
 
     for k, line in enumerate(lines):
@@ -345,20 +399,30 @@ def get_elems_df(lines, nodes, dec):
             print('Unknown element type - check {:i}'.format(k))
             continue
 
+        # Determine approximate width
+        width_bot = xy2[0, 0] - xy1[0, 0]
+        width_top = xy3[0, 0] - xy4[0, 0]
+        w = (width_bot + width_top) / 2
+
+        # Determine approximate height
+        height_left  = xy4[0, 1] - xy1[0, 1]
+        height_right = xy3[0, 1] - xy2[0, 1]
+        h = (height_left + height_right) / 2
+
         # Get node numbers, i and j
         Ns = []
         for one_xy in [xy1, xy2, xy3, xy4]:
             dfmask = (nodes['x'] == one_xy[0,0]) & (nodes['y'] == one_xy[0,1])
             Ns.append(int(nodes.loc[dfmask, 'node_n']))
 
-        # Get element i and j
+        # Get element i, j, s
         n = 0 # will get filled later
         i = int(nodes.loc[nodes['node_n'] == Ns[0], 'node_i'])
         j = int(nodes.loc[nodes['node_n'] == Ns[0], 'node_j'])
-        s = line.dxf.layer
+        s = line.dxf.layer.replace(lay_id, '') #(remove layer id; easier read)
 
         # Export outputs
-        out = pd.DataFrame([[n, i, j, etype, s, xc, yc] + Ns], columns = cols)
+        out = pd.DataFrame([[n,i,j,etype,s,w,h,xc,yc]+Ns], columns = cols)
         elems = elems.append(out, ignore_index = True)
     
     # Sort for easier handling, populate element numbers, and return
