@@ -8,8 +8,10 @@ exported to a ".q4r" file.
 MAIN FUNCTIONS:
 This module contains the following functions:
     * elem_stresses: adds vertical and mean effective stress to elems dataframe
+    * map_rf: map random field to elems dataframe.
     
 '''
+
 # ------------------------------------------------------------------------------
 # Import Modules
 # ------------------------------------------------------------------------------
@@ -44,14 +46,14 @@ def elem_stresses(nodes, elems, k = 0.5, def_unit_w = 21000):
         
     def_unit_w : float (defaults = 21000)
         unit weight for material, *ONLY* used if "elems" does not already 
-        include a 'unit_w' column.
+        include a 'unit_w' column!!!
 
     Returns
     -------
     elems : pandas DataFrame
         Returns elems DataFrame that was provided, with added columns for effec-
         tive and mean stress: ['unit_v', 'unit_m]. CAREFUL WITH UNITS.
-        
+
     Notes
     -----
     * If unit_w provided is effective, stresses will be effective.
@@ -168,6 +170,7 @@ def map_rf(elems, prop, z):
   elems[prop] = mapped_z
 
   return elems
+
 
 # ------------------------------------------------------------------------------
 # Helper Functions
