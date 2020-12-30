@@ -25,7 +25,7 @@ import llgeo.quad4m.genfiles as q4m_files
 #   Obtain model geometry from DXF file
 print('Generating geometry')
 nodes, elems = geom.dxf_to_dfs('./CAD/', '01_01.dxf')  # Read dxf and create dfs
-geom.dfs_to_dxfs('./CAD/', '01_01_check.dxf', nodes, elems) # Output to dxf again, as a check 
+geom.dfs_to_dxf('./CAD/', '01_01_check.dxf', nodes, elems) # Output to dxf again, as a check 
 
 
 #%% STEP #2 --------------------------------------------------------------------
