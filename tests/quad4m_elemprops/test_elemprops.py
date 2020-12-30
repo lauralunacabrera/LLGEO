@@ -45,7 +45,7 @@ elems = q4m_props.map_rf(elems, 'mapZ', Z)
 
 # Output the results to a DXF, including the new mapped column, to check that
 # everything makes sense.
-q4m_geom.dfs_to_dxfs(dxf_path, dxf_outf, nodes, elems, elems_add_col = 'mapZ')
+q4m_geom.dfs_to_dxf(dxf_path, dxf_outf, nodes, elems, elems_add_col = 'mapZ')
 
 #%%
 # Get stresses 
