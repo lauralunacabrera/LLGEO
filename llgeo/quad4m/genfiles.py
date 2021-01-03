@@ -60,7 +60,7 @@ def gen_q4r(Q, elems, nodes, out_path, out_file):
         
     Notes
     -----
-    * TODO: Missing KSAV and NSLP functionalities. Will return False if asked.
+    * TODO-soon: Missing KSAV and NSLP functionalities. Will return False if asked.
 
     References
     ----------
@@ -72,7 +72,7 @@ def gen_q4r(Q, elems, nodes, out_path, out_file):
 
     # Error Checking (only does basic stuff... I'm assuming user is smart)
     # --------------------------------------------------------------------------
-    # TODO: change to logging?
+    # TODO-wishlist: change to logging?
 
     # Check that all required node and element information is present
     req_elem_cols = ['n', 'N1', 'N2', 'N3', 'N4',
@@ -188,7 +188,7 @@ def gen_q4r(Q, elems, nodes, out_path, out_file):
         L+= [ Q['KFILEOUT'] ]                                            #V(L29)
         L+= [ Q['KSUFFIX']   ]                                           #V(L30)
 
-    # TODO:
+    # TODO-soon:
     #   Putting these here so I am aware of the work that still needs to be done
     #   Don't think I'll be using the KSAV option
     #   I will eventually have to figure out the seismic coefifcient part though
@@ -260,8 +260,8 @@ def gen_dat(soil_curves, out_path, out_file):
     '''
     # Some (extremely) basic error checking
     # ----------------------------------------------------------------------
-    # TODO: change to logging?
-    # TODO: add more checks and create separate function?
+    # TODO-wishlist: change to logging?
+    # TODO-soon: add more checks and create separate function?
     # Checks to complete:
     #   0) check that number of properties < 5-digit number
     #   1) ensure dictionary keys match requirements
@@ -301,7 +301,7 @@ def gen_dat(soil_curves, out_path, out_file):
         # Note: I'm still deciding on how to approach data handling, which means
         #       the structure of inputs is likely to change.  I am adding the
         #       next few lines to make it easier fix in the future if neeeded.
-        # TODO: Figure out the final configuration for inputs to here.
+        # TODO-soon: Figure out the final configuration for inputs to here.
 
         S_name = soil['S_name'] 
         S_desc = soil['S_desc']

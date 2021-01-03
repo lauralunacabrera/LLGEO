@@ -98,8 +98,6 @@ def sim1d(n, xl, zm, zv, thx, fncnam, pa, pb, nsims, kseed):
         
     Notes
     -----
-    * TODO: Fix unit number because that's not controllable in python. Allow
-            user to provide a path to file instead: figure it out internally.
 
     References
     ----------

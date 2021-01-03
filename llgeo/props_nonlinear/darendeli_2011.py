@@ -174,7 +174,7 @@ def curves(sstrn, a, b, D_min, sstrn_r):
 
 def check_darendeli_args(PI, sigp_o, OCR, N, load_freq, ctype):
     ''' Does basic error checking for darendeli arguments
-    TODO: integrate this into the curves, figure out how to handle logging'''
+    TODO-soon: integrate this into the curves, figure out how to handle logging'''
 
     # Reference to Darendeli's thesis for error references
     ref_01 = 'Darendeli (2001) Development of a New Family of Normalized ...'
