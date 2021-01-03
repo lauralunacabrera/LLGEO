@@ -1,12 +1,52 @@
+''' Utilities for handling "databases" for QUAD4M analyses.
+
+DESCRIPTION:
+
+This module helps create and manage "databases" of:
+    * Geometries (db_geoms)
+    * Earhtquakes (db_accs)
+    * Non-linear properties (db_nonlins)
+    * Random fields (db_rfs)
+
+MAIN FUNCTIONS:
+This module contains the following functions:
+    * uptdate_db_geoms
+    * 
+    
+'''
+
+# ------------------------------------------------------------------------------
+# Import Modules
+# ------------------------------------------------------------------------------
 import pickle as pkl
 import pandas as pd
 import numpy as np
 import os
 import warnings
+
+# LLGEO
 import llgeo.quad4m.geometry as q4m_geom
 
+# ------------------------------------------------------------------------------
+# Main Functions
+# ------------------------------------------------------------------------------
+def update_db_accs(path_db, file_db, acc, tstep):
+    ''' 
+    This will be completed at another time.
 
-def update_db_geom(path_db, file_db, path_DXF, new_DXF_files,
+    I initially processed the ground motions before doing things this way, and I
+    don't want to waste time re-doing work. So, problem for another time. 
+
+    For now, all the motions have been processed already and are saved.
+
+    Either way, not sure that this function can even be written, since the nature
+    of the text files would be different for each type of project. So maybe it's 
+    just better to do individually each time.
+    '''
+
+    return False
+
+def update_db_geoms(path_db, file_db, path_DXF, new_DXF_files,
                    path_check = 'check/'):
     ''' Adds new entries to database of geometries
         
@@ -22,6 +62,7 @@ def update_db_geom(path_db, file_db, path_DXF, new_DXF_files,
     Each processed geometry dictionary contains the following keys:
        *id     | entry id
        *name   | entry name
+       *fname  | name of file where dfs are saved (includes extension .pkl)
        *W      | maximum width of the overall mesh
        *H      | maximum height of the overall meesh
        *nelm   | number of elements in the mesh
@@ -54,7 +95,7 @@ def update_db_geom(path_db, file_db, path_DXF, new_DXF_files,
 
     Returns
     -------
-    db_geom : dataframe
+    db_geoms : dataframe
         "database" summary file, which now includes information on new_DXF_files
 
     geom_dicts : list of dictionaries
@@ -64,11 +105,11 @@ def update_db_geom(path_db, file_db, path_DXF, new_DXF_files,
     '''
 
     # Get the current database
-    db_geom = get_db_geom(path_db, file_db)
+    db_geoms = get_db(path_db, file_db, db_type = 'geoms' )
 
     # Determine current id based on database
-    if len(db_geom) > 0:
-        i = np.max(db_geom['id'])
+    if len(db_geoms) > 0:
+        i = np.max(db_geoms['id'])
     else:
         i = 0
 
@@ -86,7 +127,7 @@ def update_db_geom(path_db, file_db, path_DXF, new_DXF_files,
         name = new_DXF_file.replace('.dxf', '')
 
         # If name already exists, read data continue to next entry
-        if name in db_geom['name'].tolist():
+        if name in db_geoms['name'].tolist():
 
             # Warn user that no new data is being processed
             mssg = 'Entry alread exists: {:10s}'.format(name)
@@ -94,11 +135,10 @@ def update_db_geom(path_db, file_db, path_DXF, new_DXF_files,
             warnings.showwarning(mssg , UserWarning, 'db_utils.py', '')
 
             # Determine name of entry
-            i_exist = int(db_geom.loc[db_geom['name'] == name, 'id'])
-            f_exist = '{i:03d}_{name}.pkl'.format(i = i_exist, name = name)
+            f_exist = db_geoms.loc[db_geoms['name'] == name, 'fname'].item()
 
             # Read existing file
-            handler = open(f_exist, 'rb')
+            handler = open(path_db + f_exist, 'rb')
             d_exist = pkl.load(handler) # data that already exists
             handler.close()
 
@@ -112,11 +152,12 @@ def update_db_geom(path_db, file_db, path_DXF, new_DXF_files,
         W, H, N, w, h = q4m_geom.get_mesh_sizes(nodes, elems)
 
         # Save new entry to pickle in database directory
-        out_file = '{i:03d}_{name}.pkl'.format(i = i, name = name) 
-        out_data = {'id': i, 'name': name, 'W': W, 'H': H, 'nelm': N, 'welm': w,
-                    'helm':h, 'nodes':nodes, 'elems':elems, 'readme': readme}
+        fname = '{i:03d}_{name}.pkl'.format(i = i, name = name) 
+        out_data = {'id': i, 'name': name, 'fname': fname, 'W': W, 'H': H, 
+                    'nelm': N, 'welm': w, 'helm':h, 'nodes':nodes,
+                    'elems':elems, 'readme': readme}
         
-        handler = open(out_file, 'wb')
+        handler = open(fname, 'wb')
         pkl.dump(out_data, handler)
         handler.close()
 
@@ -124,28 +165,85 @@ def update_db_geom(path_db, file_db, path_DXF, new_DXF_files,
         if path_check and not os.path.exists(path_db + path_check):
             err  = 'DXF check directory does not exists\n'
             err += 'Create it, or set path_check = False'
-            raise Exception()
+            raise Exception(err)
 
         # Output DXFs as a check (if path_check is not False)        
         elif path_check:
-            file_check = out_file.replace('.pkl', '.dxf')
+            file_check = fname.replace('.pkl', '.dxf')
             q4m_geom.dfs_to_dxf(path_db + path_check, file_check, nodes, elems)
 
-        # Add summary info to db_geom
-        cols = list(db_geom)
-        new_row = pd.DataFrame([[i, name, W, H, N, w, h]], columns = cols)
-        db_geom = db_geom.append(new_row, ignore_index = True)
+        # Add summary info to db_geoms
+        cols = list(db_geoms)
+        new_row = pd.DataFrame([[i, name, fname, W, H, N, w, h]], columns= cols)
+        db_geoms = db_geoms.append(new_row, ignore_index = True)
 
         # Add new data for list export
         geom_dicts += [out_data]
 
-    # Save db_geom summary file
-    db_geom.to_pickle(path_db + file_db)
+    # Save db_geoms summary file
+    db_geoms.to_pickle(path_db + file_db)
 
-    return db_geom, geom_dicts
+    return db_geoms, geom_dicts
 
 
-def get_db_geom(path_db, file_db, reset = False):
+# ------------------------------------------------------------------------------
+# Helper Functions
+# ------------------------------------------------------------------------------
+def search(db, conditions, return_col = 'all'):
+    ''' Returns entries from db that meet desired condition
+        
+    Purpose
+    -------
+    Given a "database" summary file (db), this returns the entries that match
+    the conditions specified in the dictionary "conditions". 
+        
+    Parameters
+    ----------
+    db : dataframe
+        Database summary file 
+        
+    conditions : dict
+        Conditions to be met. Ex: {'T': 2475} will return db entries in which
+        the column T has a value of 2475. So far, only equality is checked
+        (no > or <)
+
+    return_col : list of str (or str) (optional)
+        list of column names to return, or a single string for one coloumn
+        if a single column is given, then the return will be a numpy array (not 
+        dataframe series). Otherwise, the return will be a DataFrame.
+        Defaults to returning all columns.
+        
+    Returns
+    -------s
+    result : numpy array or dataframe
+        db entries that match condition, with output columns dictated by
+        return_col. If there is only one return_col, then result is np array,
+        otherwise it is a dataframe.
+
+    Notes
+    -----
+    * TODO-wishlist: could this include > and < at some point?
+    '''
+
+    # Find which db entries meet ALL conditions 
+    masks = [ db[col] == val for col, val in conditions.items()]
+    all_mask = np.all(masks, axis = 0)
+   
+   # If return_col is 'all', then return all columns.
+    if return_col == 'all':
+        return_col = list(db)
+    
+    # Extract desied columns
+    result = db.loc[all_mask, return_col]
+
+    # If only one column was requested, change to numpy array
+    if not isinstance(return_col, list):
+        result = result.values
+
+    return result
+
+
+def get_db(path_db, file_db, db_type = False, reset = False):
     ''' Gets the summary dataframe of available geometries.
         
     Purpose
@@ -174,6 +272,10 @@ def get_db_geom(path_db, file_db, reset = False):
     file_db : str
         name of "database" summary file (usually ending in .pkl).
 
+    db_type : str
+        type of dataframe to get. One of: geoms | accs | nonlins | rfs |
+        only needed if database is being created for the first time.
+
     reset : bool (optional)
         set TRUE to replace summary file with an empty one (BE CAREFUL!).
 
@@ -184,20 +286,35 @@ def get_db_geom(path_db, file_db, reset = False):
         either an empty DF, or a read of a file_db (depends on inputs) 
     '''
 
-    # Columns to add in summary file
-    cols = ['id', 'name', 'W', 'H', 'nelm', 'welm', 'helm']
-
     # Check whether file exists
     exists = os.path.isfile(path_db + file_db)
 
     # Print warning if reset = True
     if reset:
-        mssg  = 'Database summary file was deleted!!!'
-        mssg += ' Make sure to remove pkl files or fix this somehow!'
+        mssg  = 'db_' + db_type + ' summary file was deleted!!!'
+        mssg += ' Make sure to remove pickle files as well.'
         warnings.showwarning(mssg, UserWarning, 'db_utils.py', '')
 
     # Create new file, if needed
     if not exists or reset:
+        
+        # Columns to add in summary file
+        if db_type == 'geoms':
+            cols = ['id', 'name', 'fname', 'W', 'H', 'nelm', 'welm', 'helm']
+
+        elif db_type == 'accs':
+            raise Exception('heh, you didnt code this in silly')
+            # cols = ['id', 'name', 'fname', 'T', 'kind', 'dir', 'n', 'step', 'max']
+
+        elif db_type == 'nonlins':
+            pass
+
+        elif db_type == 'rfs':
+            pass
+
+        else:
+            raise Exception('type of db not recognized.')
+
         db = pd.DataFrame([], columns = cols)
         db.to_pickle(path_db + file_db)
 
@@ -211,3 +328,20 @@ def get_db_geom(path_db, file_db, reset = False):
         handler.close()
 
     return db
+
+def get_entries(fnames):
+    ''' Justa quick pickle wrapper'''
+
+    if isinstance(fnames, list):        
+        data = []
+        for fname in fnames:
+            handler = open(fname, 'rb')
+            data += [pkl.load(handler)]
+            handler.close()
+    
+    else:
+        handler = open(fnames, 'rb')
+        data = pkl.load(handler)
+        handler.close()
+
+    return(data)
