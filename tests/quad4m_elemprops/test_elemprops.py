@@ -133,7 +133,7 @@ seed = np.random.randint(0, 20)
 pa = zv
 pb = 0
 
-# TODO: these tests are broken... fix!
+# TODO-soon: these tests are broken... fix!
 # # RFs = sim_LAS.sim2d(n1_gen, n2_gen, xl, yl, zm, zv, thx, thy,
 #                 #    fnc, pa, pb, nsim, seed)
 
