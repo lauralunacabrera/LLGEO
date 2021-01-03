@@ -1,5 +1,5 @@
 {
-	// Place your Library workspace snippets here. Each snippet is defined under a snippet name and has a scope, prefix, body and 
+	// Place your DalThesis workspace snippets here. Each snippet is defined under a snippet name and has a scope, prefix, body and 
 	// description. Add comma separated ids of the languages where the snippet is applicable in the scope field. If scope 
 	// is left empty or omitted, the snippet gets applied to all languages. The prefix is what is 
 	// used to trigger the snippet and the body will be expanded and inserted. Possible variables are: 
@@ -16,10 +16,11 @@
 	// 	"description": "Log output to console"
 	// }
 
-	"Print to console":{
+
+	"doc_fun":{
 		"scope": "python",
 		"prefix":"doc_fun",
-		"body": [" ''' One-line description of the function",
+		"body": ["''' One-line description of the function",
 				 "    ",
 		         "Purpose",
 		         "-------",
@@ -58,6 +59,29 @@
 				   "'''",
 				],
 		"description": "Documentation for functions"
-		}
+		},
 
+	"doc_today": {
+		"prefix": "doc_today",
+		"body": ["'$CURRENT_YEAR-$CURRENT_MONTH-$CURRENT_DATE'"],
+		"description":  "Documentation of date"
+	},
+
+	"doc_now": {
+		"prefix": "doc_now",
+		"body": ["'$CURRENT_YEAR-$CURRENT_MONTH-$CURRENT_DATE $CURRENT_HOUR:$CURRENT_MINUTE'"],
+		"description":  "Documentation of date with current time"
+	},
+
+	"doc_script": {
+		"prefix": "doc_script",
+		"body": ["'''",
+				 "TITLE:        $TM_FILENAME",
+				 "TASK_TYPE:    enter_task_name",
+				 "PURPOSE:      enter_purpose",
+				 "LAST_UPDATED: $CURRENT_YEAR-$CURRENT_MONTH-$CURRENT_DATE $CURRENT_HOUR:$CURRENT_MINUTE".
+				 "'''"
+				],
+		"description": "Documentation for scripts"
+	},
 }
