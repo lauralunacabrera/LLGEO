@@ -8,6 +8,8 @@ requests = "*"
 llgeo = {editable = true, path = "."}
 ipykernel = "*"
 pylint = "*"
+selenium = "*"
+beautifulsoup4 = "*"
 
 [dev-packages]
 
