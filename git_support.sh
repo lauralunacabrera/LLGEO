@@ -24,6 +24,3 @@ git commit --quiet -m "shell files ~ unimportant" > /dev/null
 git add Pipfile > /dev/null
 git add Pipfile.lock > /dev/null
 git commit --quiet -m "venv files ~ unimportant" > /dev/null
-
-# Print commits ahead 
-git log origin..HEAD
