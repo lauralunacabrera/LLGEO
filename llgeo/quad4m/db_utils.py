@@ -328,20 +328,3 @@ def get_db(path_db, file_db, db_type = False, reset = False):
         handler.close()
 
     return db
-
-def get_entries(fnames):
-    ''' Justa quick pickle wrapper'''
-
-    if isinstance(fnames, list):        
-        data = []
-        for fname in fnames:
-            handler = open(fname, 'rb')
-            data += [pkl.load(handler)]
-            handler.close()
-    
-    else:
-        handler = open(fnames, 'rb')
-        data = pkl.load(handler)
-        handler.close()
-
-    return(data)
