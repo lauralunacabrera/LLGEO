@@ -115,6 +115,59 @@ def elem_stresses(nodes, elems, k = 0.5, unit_w = 21000):
     return(elems)
 
 
+def map_vs_powerfit(nodes, elems, power, const, unit_w = 21000):
+
+    # If there isn't already a unit_w in elems dataframe, then choose a uniform
+    # one for all (if none provided, defaults to 21000 N/m3)
+    if 'unit_w' not in list(elems):
+        elems['unit_w'] = unit_w * np.ones(len(elems))
+
+    # Get the top of each node column (goes left to right)
+    top_ys_nodes = [col['y'].max() for _, col in nodes.groupby('node_i')]
+
+    # Get top of each element col (average of top left and top right nodes)
+    # (moving average of top_ys_nodes with window of 2; see shorturl.at/iwFLY)
+    top_ys_elems = np.convolve(top_ys_nodes, [0.5, 0.5], 'valid')
+
+    # Iterate through element soil columns (goes left to right)
+    elems['vs'] = np.empty(len(elems)) 
+    elems['Gmax'] = np.empty(len(elems))
+    elems['depth'] = np.empty(len(elems))
+
+    for (x, soil_col), y_top in zip(elems.groupby('xc'), top_ys_elems):
+
+        # Get array of y-coords at center of element and unit weights
+        # Note that in elems dataframe, elements are ordered from the bot to top
+        # Here I flip the order so that its easier for stress calc (top down)  
+        ys = soil_col['yc'].values
+        gs = soil_col['unit_w'].values
+        ds = y_top - ys
+
+        # Get y_diff, the depth intervals between center of elements
+        vs = const * ds ** power
+        Gm = (gs/9.81) * (vs**2)
+
+        elems.loc[elems['xc']==x, 'vs'] = vs
+        elems.loc[elems['xc']==x, 'Gmax'] = Gm
+        elems.loc[elems['xc']==x, 'depth'] = ds
+    
+    return elems
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+
+
 def map_rf(elems, prop, z):
   ''' map random field to elems dataframe.
     
