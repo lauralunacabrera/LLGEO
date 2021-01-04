@@ -77,11 +77,48 @@
 		"prefix": "doc_script",
 		"body": ["'''",
 				 "TITLE:        $TM_FILENAME",
-				 "TASK_TYPE:    enter_task_name",
+				 "TASK_TYPE:    pre-processing | analysis | figures ",
 				 "PURPOSE:      enter_purpose",
 				 "LAST_UPDATED: $CURRENT_YEAR-$CURRENT_MONTH-$CURRENT_DATE $CURRENT_HOUR:$CURRENT_MINUTE".
+				 "DATA_FILES:   enter_data_files",
 				 "'''"
 				],
 		"description": "Documentation for scripts"
+	},
+
+	"doc_module": {
+		"prefix": "doc_module",
+		"body": ["''' one_line_description",
+				 "",
+				 "DESCRIPTION:",
+				 "Insert a paragraph-long description of the module here.",
+				 "",
+				 "FUNCTIONS:",
+				 "This module contains the following (main) functions:",
+				 "    * fun_name : one_line_description",
+				 "                 (only add user-facing ones)",
+				 "",
+				 "'''",
+				 "",
+				 "",
+				 "# ------------------------------------------------------------------------------",
+				 "# Main Functions",
+				 "# ------------------------------------------------------------------------------",
+				 "",
+				 "",
+				 "# ------------------------------------------------------------------------------",
+				 "# Helper Functions",
+				 "# ------------------------------------------------------------------------------",
+				],
+		"description": "Documentation for modules"
+	},
+
+	"doc_header" : {
+		"prefix": "doc_header",
+		"body": ["# ------------------------------------------------------------------------------",
+				 "# header",
+				 "# ------------------------------------------------------------------------------"
+				],
+		"description": "Quick headers"
 	},
 }
