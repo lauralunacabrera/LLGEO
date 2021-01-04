@@ -97,7 +97,7 @@ def params(PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
     return(a, b, D_min, sstrn_r)
 
 
-def curves(sstrn, a, b, D_min, sstrn_r):
+def curves(sstrn, PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
     ''' Mean modulus reduction and damping curves
 
     Purpose
@@ -145,6 +145,7 @@ def curves(sstrn, a, b, D_min, sstrn_r):
               Table 8.12, Page 214, in Ref(1)
 
     '''
+    a, b, D_min, sstrn_r = params(PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean')
 
     # Normalized modulus reduction curve (Eq. 7.25)
     G_red = 1 / (1 + (sstrn / sstrn_r)**a)
