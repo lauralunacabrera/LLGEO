@@ -18,7 +18,6 @@ This module contains the following functions:
 # ------------------------------------------------------------------------------
 # Import Modules
 # ------------------------------------------------------------------------------
-import pickle as pkl
 import pandas as pd
 import numpy as np
 import os
@@ -26,6 +25,7 @@ import warnings
 
 # LLGEO
 import llgeo.quad4m.geometry as q4m_geom
+import llgeo.utilities.files as llgeo_fls
 
 # ------------------------------------------------------------------------------
 # Main Functions
@@ -46,8 +46,7 @@ def update_db_accs(path_db, file_db, acc, tstep):
 
     return False
 
-def update_db_geoms(path_db, file_db, path_DXF, new_DXF_files,
-                   path_check = 'check/'):
+def update_db_geoms(path_db, file_db, path_DXF, new_DXF_files, path_check):
     ''' Adds new entries to database of geometries
         
     Purpose
@@ -89,8 +88,8 @@ def update_db_geoms(path_db, file_db, path_DXF, new_DXF_files,
         list of dxf file names (usually ending in .dxf)
 
     path_check : str
-        sub-directory from path_db where check DXFs will be printed out
-        IF DOESN'T EXISTS, WILL EXIT WITH ERROR!
+        directory where "check" DXFs will be printed out
+        If doesn't exist, will exit eith error.
         if set to False, then no check DXFs will be printed
 
     Returns
@@ -137,13 +136,8 @@ def update_db_geoms(path_db, file_db, path_DXF, new_DXF_files,
             # Determine name of entry
             f_exist = db_geoms.loc[db_geoms['name'] == name, 'fname'].item()
 
-            # Read existing file
-            handler = open(path_db + f_exist, 'rb')
-            d_exist = pkl.load(handler) # data that already exists
-            handler.close()
-
-            # Add to output data and continue to next entry
-            geom_dicts += [d_exist]
+            # Read existing file and add to output dictionary
+            geom_dicts += [llgeo_fls.read_pkl(path_db, f_exist)]
             continue
     
         # Otherwise, process new entry
@@ -157,12 +151,10 @@ def update_db_geoms(path_db, file_db, path_DXF, new_DXF_files,
                     'nelm': N, 'welm': w, 'helm':h, 'nodes':nodes,
                     'elems':elems, 'readme': readme}
         
-        handler = open(fname, 'wb')
-        pkl.dump(out_data, handler)
-        handler.close()
+        llgeo_fls.save_pkl(path_db, fname, out_data, True)
 
         # Make sure check directory exists (if needed)
-        if path_check and not os.path.exists(path_db + path_check):
+        if path_check and not os.path.exists(path_check):
             err  = 'DXF check directory does not exists\n'
             err += 'Create it, or set path_check = False'
             raise Exception(err)
@@ -170,7 +162,7 @@ def update_db_geoms(path_db, file_db, path_DXF, new_DXF_files,
         # Output DXFs as a check (if path_check is not False)        
         elif path_check:
             file_check = fname.replace('.pkl', '.dxf')
-            q4m_geom.dfs_to_dxf(path_db + path_check, file_check, nodes, elems)
+            q4m_geom.dfs_to_dxf(path_check, file_check, nodes, elems)
 
         # Add summary info to db_geoms
         cols = list(db_geoms)
@@ -323,8 +315,6 @@ def get_db(path_db, file_db, db_type = False, reset = False):
 
     # If no new file is needed, read existing one
     else:
-        handler = open(path_db + file_db, 'rb')
-        db = pkl.load(handler)
-        handler.close()
+        db = llgeo_fls.read_pkl(path_db, file_db)
 
     return db
