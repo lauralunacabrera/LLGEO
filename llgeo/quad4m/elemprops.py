@@ -154,20 +154,6 @@ def map_vs_powerfit(nodes, elems, power, const, unit_w = 21000):
     return elems
 
 
-
-
-        
-
-
-
-
-
-
-
-
-
-
-
 def map_rf(elems, prop, z):
   ''' map random field to elems dataframe.
     
