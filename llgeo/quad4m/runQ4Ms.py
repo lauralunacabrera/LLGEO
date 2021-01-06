@@ -69,7 +69,7 @@ def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
 
     # Check that all files exist, and return if anything is missing.
     err_flag = 0
-    paths = [dir_q4m+'Quad4MU.exe', dir_wrk+file_q4r, dir_wrk+file_dat, dir_out]
+    paths = ['Quad4MU.exe', dir_wrk+file_q4r, dir_wrk+file_dat, dir_out]
     err_msgs = ['Missing Quad4MU.exe file', 'Missing .q4r input file',
                 'Missing .dat soil reduction file', 'Output path doesnt exist']   
     
@@ -83,6 +83,8 @@ def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
     for path, err_msg in zip(paths, err_msgs):
         if not os.path.exists(path):
             print(err_msg + '\n Cannot run simulation.')
+            print('Revise path: '+ path)
+            print('wrk, dat, and out paths must be relative to dir_q4m')
             err_flag += 1
 
     # Escape if an error was found
@@ -111,7 +113,7 @@ def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
     stdout, stderr = p.communicate()
 
     # Print standard output and standard error to debug file
-    with open(dir_out + file_bug, 'a') as f:
+    with open(dir_q4m + dir_out + file_bug, 'w+') as f:
         f.write('STANDARD OUTPUT\n---------------')
         f.write(stdout)
         f.write('\n\n\n')
