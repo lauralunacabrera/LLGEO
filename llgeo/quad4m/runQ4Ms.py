@@ -9,8 +9,38 @@ This module contains the following functions:
     * run_QUAD4M: runs one instance of QUAD4MU, given all input files and dirs
 
 '''
+from concurrent.futures import ThreadPoolExecutor
+from memory_profiler import memory_usage
 import subprocess as sub
+import numpy as np
 import os
+
+# ------------------------------------------------------------------------------
+# Main functions
+# ------------------------------------------------------------------------------
+
+def runQ4Ms_mem(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, max_workers):
+
+    print('Starting Threads: ')
+    
+    grouped_args = []
+    for i, args in enumerate(zip(dq4ms, dwrks, douts, fq4rs, fdats, fouts,
+                                 fbugs, max_workers)):
+        
+
+
+    ts = [Thread[target = foo]]
+    
+    
+    
+    mems = []
+    for args in zip(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs):
+        mem = memory_usage(proc = (runQ4M, args), interval = 1, timeout = 2,
+                            include_children = True)
+        mems += [mem]
+        print(np.max(mem))
+
+    return mems
 
 def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
     ''' Runs a single simulation of QUAD4MU, given all input files and dirs.
@@ -110,6 +140,7 @@ def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
     p.stdin.write(file_out + '\n')
 
     # Run!
+    pid = p.pid
     stdout, stderr = p.communicate()
 
     # Print standard output and standard error to debug file
