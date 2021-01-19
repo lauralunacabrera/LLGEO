@@ -10,6 +10,7 @@ ipykernel = "*"
 pylint = "*"
 selenium = "*"
 beautifulsoup4 = "*"
+memory-profiler = "*"
 
 [dev-packages]
 

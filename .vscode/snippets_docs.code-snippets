@@ -121,4 +121,9 @@
 				],
 		"description": "Quick headers"
 	},
+
+	"doc_shrug": {
+		"prefix" : "doc_shrug",
+		"body"   : "¯|_(ツ)_|¯"
+	},
 }

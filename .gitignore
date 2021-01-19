@@ -19,11 +19,11 @@ dist/
 *.exe
 *.acc
 *.ACC
-*.q4r
-*.dat
-*.bug
-*.stats
-*.out
+*.q4r*
+*.dat*
+*.bug*
+*.stats*
+*.out*
 
 
 # STANDARD PYTHON .GITIGNORE
