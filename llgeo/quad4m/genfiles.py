@@ -287,7 +287,7 @@ def gen_dat(soil_curves, out_path, out_file):
     L = ['{:5d}'.format(NUMPROPS)]
 
     # Format specifications that will be used to create the file lines.
-    fmt01 = {'cols': 8, 'width': 10, 'space': 2}
+    fmt01 = {'cols': 8, 'width': 10, 'space': 4}
     fmt02 = '{N:5d}  | {T:^18s} | {S:^8s} | {D:^20s} | '
     fmt03 = '{lbl:-<{W}}'
     clim  = fmt01['cols'] * fmt01['width'] # max characters per line
