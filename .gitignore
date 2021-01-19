@@ -1,3 +1,9 @@
+# FORTRAN
+# --------------------------
+*.o
+
+
+
 # PYTHON AND PIP DISTRIBUTION
 # --------------------------
 build/
