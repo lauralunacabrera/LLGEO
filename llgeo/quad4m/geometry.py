@@ -428,6 +428,7 @@ def get_elems_df(lines, nodes, dec, lay_id):
     # Sort for easier handling, populate element numbers, and return
     elems = elems.sort_values(by = ['j', 'i']) # F-ordered (column major)
     elems['n'] = 1 + np.arange(0, len(elems))  # 1-indexed!!!
+    elems.reset_index(inplace = True)
     return(elems)
     
     
