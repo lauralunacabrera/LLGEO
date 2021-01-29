@@ -9,38 +9,17 @@ This module contains the following functions:
     * run_QUAD4M: runs one instance of QUAD4MU, given all input files and dirs
 
 '''
-from concurrent.futures import ThreadPoolExecutor
 from memory_profiler import memory_usage
+from threading import Thread
 import subprocess as sub
-import numpy as np
 import os
+import numpy as np
+import math
+import time
 
 # ------------------------------------------------------------------------------
 # Main functions
 # ------------------------------------------------------------------------------
-
-def runQ4Ms_mem(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, max_workers):
-
-    print('Starting Threads: ')
-    
-    grouped_args = []
-    for i, args in enumerate(zip(dq4ms, dwrks, douts, fq4rs, fdats, fouts,
-                                 fbugs, max_workers)):
-        
-
-
-    ts = [Thread[target = foo]]
-    
-    
-    
-    mems = []
-    for args in zip(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs):
-        mem = memory_usage(proc = (runQ4M, args), interval = 1, timeout = 2,
-                            include_children = True)
-        mems += [mem]
-        print(np.max(mem))
-
-    return mems
 
 def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
     ''' Runs a single simulation of QUAD4MU, given all input files and dirs.
@@ -140,7 +119,6 @@ def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
     p.stdin.write(file_out + '\n')
 
     # Run!
-    pid = p.pid
     stdout, stderr = p.communicate()
 
     # Print standard output and standard error to debug file
@@ -158,4 +136,48 @@ def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
     return True
 
 
+def runQ4Ms_series(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs):
 
+    for i, args in enumerate(zip(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs)):
+        _ = runQ4M(*args)
+        print('Processed file no. ' + str(i+1))
+
+    return True
+
+
+def runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, max_workers):
+
+    all_args = [a for a in zip(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs)]
+    num_groups = math.ceil( len(all_args)/max_workers)
+    print('Starting {:d} Threads to Process {:d} Groups'.format(max_workers, num_groups))
+    
+    grouped_args = []
+    for n in range(num_groups):
+        ifrom = max_workers * n
+        ito   = max_workers * (n + 1)   
+        grouped_args += [ all_args[ifrom : ito] ]
+
+    for n, group in enumerate(grouped_args):
+        ts = [Thread(target = runQ4M, args = args) for args in group] 
+        [t.start() for t in ts]
+        [t.join() for t in ts]
+        print('Concluded with group: '+str(n+1))
+
+    return True
+
+
+def run_QUAD4Ms_series_mem(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, max_workers = None):
+
+    args = (dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs)
+    mem = memory_usage(proc = (runQ4Ms_series, args), interval = 0.5, 
+                                timeout = 2, include_children = True)
+    return np.max(mem)
+
+
+def run_QUAD4Ms_parallel_mem(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, max_workers):
+
+    args = (dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, max_workers)
+    mem = memory_usage(proc = (runQ4Ms_parallel, args), interval = 0.5, 
+                                timeout = 2, include_children = True)
+
+    return np.max(mem)
