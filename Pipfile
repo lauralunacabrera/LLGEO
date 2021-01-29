@@ -11,6 +11,7 @@ pylint = "*"
 selenium = "*"
 beautifulsoup4 = "*"
 memory-profiler = "*"
+twine = "*"
 
 [dev-packages]
 

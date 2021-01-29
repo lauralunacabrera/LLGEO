@@ -25,7 +25,8 @@ VERSION 0.0.3
 
 VERSION 0.0.4
 - llgeo/quad4m/          : improved documentation of all existing modules
-- llgeo/quad4m/elemprops : added module to help populate element properties
-
-- llgeo/rand_fields/ : added modules to generate random field realizations using LAS
-- llgeo/tests/       : added more tests for quad4m and rand_fields
+- New modules:
+    - llgeo/basic_stats
+    - llgeo/cpt_interp
+    - llgeo/plotting
+    - llgeo/randfields
