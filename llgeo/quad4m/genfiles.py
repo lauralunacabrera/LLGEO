@@ -15,6 +15,7 @@ This module contains the following functions:
 # Standard libaries
 import numpy as np
 import pandas as pd
+import os
 
 # LLGEO modules
 import llgeo.utilities.formatters as fff
@@ -335,6 +336,9 @@ def gen_dat(soil_curves, out_path, out_file):
 
     # Print lines to a file and return 
     # --------------------------------------------------------------------------
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
+
     with open(out_path + out_file, 'w') as dat_file:
         [dat_file.write(line + '\n') for line in L]
         dat_file.close()
