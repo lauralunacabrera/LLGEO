@@ -30,3 +30,6 @@ VERSION 0.0.4
     - llgeo/cpt_interp
     - llgeo/plotting
     - llgeo/randfields
+
+VERSION 0.0.5
+- Decreased python version required to 3.6
