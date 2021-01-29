@@ -46,6 +46,7 @@ def update_db_accs(path_db, file_db, acc, tstep):
 
     return False
 
+
 def update_db_geoms(path_db, file_db, path_DXF, new_DXF_files, path_check):
     ''' Adds new entries to database of geometries
         
@@ -176,6 +177,20 @@ def update_db_geoms(path_db, file_db, path_DXF, new_DXF_files, path_check):
     db_geoms.to_pickle(path_db + file_db)
 
     return db_geoms, geom_dicts
+
+
+def get_unique_accs(db_accs, cols = ['T', 'type', 'name']):
+    ''' Sometimes, acceleration database contains duplicate earthquakes
+        (same earhquake and return period, but different orientation).
+        This function returns unique earthquakes (as defined by "cols").
+        Just returns the first entry it finds, so it's pretty arbitary.
+    '''
+    
+    # Remove duplicates looking only at "cols"
+    opts = {'keep':'first', 'inplace':True, 'ignore_index':True}
+    db_accs.drop_duplicates(subset = cols, **opts)
+
+    return db_accs
 
 
 # ------------------------------------------------------------------------------
