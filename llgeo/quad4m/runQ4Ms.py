@@ -158,10 +158,13 @@ def runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, max_worker
         grouped_args += [ all_args[ifrom : ito] ]
 
     for n, group in enumerate(grouped_args):
+        start = time.time()
+        print('Starting with group: ' +str(n+1))
         ts = [Thread(target = runQ4M, args = args) for args in group] 
         [t.start() for t in ts]
         [t.join() for t in ts]
-        print('Concluded with group: '+str(n+1))
+        end = time.time()
+        print('Concluded with group: '+str(n+1)+'in '+str(int(end-start))+'s')
 
     return True
 
