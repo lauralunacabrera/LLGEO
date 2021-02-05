@@ -23,6 +23,7 @@ import llgeo.utilities.formatters as fff
 # ------------------------------------------------------------------------------
 # Main Functions
 # ------------------------------------------------------------------------------
+
 def gen_q4r(Q, elems, nodes, out_path, out_file):
     ''' generates QUAD4M input file (.q4r) from given settings, elems, and nodes.
     
@@ -345,6 +346,95 @@ def gen_dat(soil_curves, out_path, out_file):
 
     return L
 
+
+def gen_Q(overwrites = False):
+    '''
+    Generates default settings for QUAD4M analyses. If a dictionary "overwrites"
+    is passed, then the defaults will be updated to whatever is passed.
+    '''
+
+    Q = {
+    # JOB INFORMATION 
+    'FTITLE' : np.nan ,    # Job title
+    'STITLE' : np.nan ,    # Job subtitle
+    'UNITS'  : 'S'    ,    # Units (S = SI, E = Imperial)
+
+    # DAMPING AND STRAIN
+    'DRF' : 1.00       ,  # Damping reduction factor
+    'PRM' : (7.5-1)/10 ,  # Factor max to eq uniform strain (typ.0.55 to 0.75)
+
+    # ROCK PROPERTIES (only if compliant base!!!)
+    'ROCKVP'  : 0 ,  # Rock p-wave velocity (m/s)
+    'ROCKVS'  : 0 ,  # Rock s-wave velocity (m/s)
+    'ROCKRHO' : 0 ,  # Rock unit weight (N/m3)
+
+    # MESH SETTINGS
+    'NELM' : np.nan ,    # Number of finite elements
+    'NDPT' : np.nan ,    # Total number of nodal points
+    'NSLP' : 0      ,    # Number of surfaces for seismic coefficient analysis
+
+    # COMPUTATION SWITCHES
+    'KGMAX' : np.nan  ,    # No. time steps in input earthquake record
+    'KGEQ'  : np.nan  ,    # No. last  time step for last  iteration
+    'N1EQ'  : 1       ,    # No. first time step for last  iteration
+    'N2EQ'  : 1       ,    # No. first time step for first iterations
+    'N3EQ'  : np.nan  ,    # No. last  time step for first iterations
+    'NUMB'  : 30      ,    # No. iterations on soil properties
+    'KV'    : 1       ,    # Flag vertical record (1 = no record, 2 = read record)
+    'KSAV'  : 0       ,    # Flag save final state (0 = no save, 1 = save)
+
+    # EARTHQUKE FILE DESCRIPTORS
+    'DTEQ'    : np.nan   ,    # Time step of input motion (s)
+    'EQMUL1'  : 1        ,    # Scaling factor horizontal component  
+    'EQMUL2'  : 0        ,    # Scaling factor vertical component
+    'UGMAX1'  : 0        ,    # Max. horizontal acceleration - will scale motion
+    'UGMAX2'  : 0        ,    # Max. vertical acceleration - will scale motion
+    'HDRX'    : np.nan   ,    # Header lines in horizontal input time history
+    'HDRY'    : 0        ,    # Header lines in vertical input time history
+    'NPLX'    : np.nan   ,    # Data pts / line in horz time history (0 = none)
+    'NPLY'    : 0        ,    # Data pts / line in vert time history (0 = none)
+    'PRINPUT' : 0.25     ,    # Period max spectral accel of horz input motion
+
+    # EARTHQUAKE FILE INFORMATION
+    'EARTHQH'   :  np.nan   ,    # Name of file with horz. input motion
+    'EQINPFMT1' :  np.nan   ,    # Format of horz. input motion
+    'EARTHQV'   :  ''       ,    # Name of file with horz. input motion
+    'EQINPFMT2' :  ''       ,    # Format of horz. input motion
+
+    # OUTPUT OPTIONS
+    'SOUT' : 1 ,    # Flag: 1 = read stress output file descriptors
+    'AOUT' : 1 ,    # Flag: 1 = read acceleration output file descriptors 
+    'KOUT' : 0 ,    # Flag: 1 = read seismic coefficient output file descriptors
+
+    # STRESS OUTPUT FILE DESCRIPTORS (ONLY USED IF SOUT = 1)
+    'SHISTFMT' : 'C'     ,   # Dump data into 'COMBINED' or 'MULTIPLE' files
+    'SFILEOUT' : np.nan  ,   # Output file name
+    'SSUFFIX'  : 'str'   ,   # Output file name sufix (3 character max)
+
+    # ACCELERATION OUTPUT FILE DESCRIPTORS (ONLY USED IF AOUT = 1)
+    'AHISTFMT' : 'C'    ,    # Dump data into '(C)OMBINED' or '(M)ULTIPLE' files
+    'AFILEOUT' : np.nan ,    # Output file name (8 char max)
+    'ASUFFIX'  : 'acc'  ,    # Output file name sufix (3 character max)
+
+    # SEISMIC COEFFICIENT OUTPUT FILE DESCRIPTORS (ONLY USED IF KOUT = 1)
+    'KHISTFMT' : '' ,    # Dump data into '(C)OMBINED' or '(M)ULTIPLE' files
+    'KFILEOUT' : '' ,    # Output file name
+    'KSUFFIX'  : '' ,    # Output file name sufix (3 character max)
+
+    # RESTART FILE NAME DESCRIPTOR (ONLY USED IF KSAV = 1)
+    'SAVEFILE' : '' ,    # Output file name for last state (no path)
+
+    # SEISMIC COEFFICIENT LINES (ONLY IF NSLP > 0, REPEAT NSLP TIMES)
+    'NSEG'  : '' ,    # Number of nodes intersected by surface 
+    'ESEG'  : '' ,    # Number of elements within surface
+    'NOSEG' : '' ,    # Node J intersected by surface I (NSEG nodes) ?????
+    'ELSEG' : '' ,    # Element J within surfce I (ESEG elements) ????
+    }
+
+    if overwrites:
+        Q.update(overwrites)
+
+    return Q
 
 # ------------------------------------------------------------------------------
 # Helper Functions
