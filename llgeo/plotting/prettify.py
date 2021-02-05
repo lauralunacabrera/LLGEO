@@ -30,6 +30,7 @@ def set_rcprops(prop_dict):
         colors = get_ccycler(prop_dict['llgeo_ccycle'])
         mpl.rcParams.update({'axes.prop_cycle': colors})
 
+
 def set_axprops(ax, prop_dict):
 
     prop_keys = prop_dict.keys()
@@ -97,8 +98,8 @@ def set_axprops(ax, prop_dict):
     return ax
 
 
-def get_ccycler(name):
-
+def get_colors(name):
+    
     llgeo_colors = {
 
     'dutch' : ['#FFC312', '#F79F1F', '#EE5A24', '#EA2027', '#C4E538', '#A3CB38',
@@ -107,7 +108,10 @@ def get_ccycler(name):
                '#833471', '#6F1E51']
     }
 
-    out_cycler = cycler(color = llgeo_colors[name])
+    return llgeo_colors[name]
+
+def get_ccycler(name):
+    out_cycler = cycler(color = get_colors(name))
     return out_cycler 
 
 
