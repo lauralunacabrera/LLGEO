@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 # Import LLGEO modules
 import llgeo.quad4m.geometry as q4m_geom
 import llgeo.quad4m.genfiles as q4m_files
-import llgeo.quad4m.elemprops as q4m_props
+import llgeo.quad4m.props_elems as q4m_elems
 import llgeo.randfields.LAS as sim_LAS
 
 #%% Check function "elem_stresses"
@@ -41,7 +41,7 @@ Z = np.arange(0, 40).reshape(8, 5, order = 'F')
 Z = Z + np.ones(np.shape(Z)) # 1-indexed fix
 
 # Now, map this random field to the elems table
-elems = q4m_props.map_rf(elems, 'mapZ', Z)
+elems = q4m_elems.map_rf(elems, 'mapZ', Z)
 
 # Output the results to a DXF, including the new mapped column, to check that
 # everything makes sense.
@@ -49,7 +49,7 @@ q4m_geom.dfs_to_dxf(dxf_path, dxf_outf, nodes, elems, elems_add_col = 'mapZ')
 
 #%%
 # Get stresses 
-elems = q4m_props.elem_stresses(nodes, elems)
+elems = q4m_elems.elem_stresses(nodes, elems)
 
 # Quick plotting checks
 fig, ax = plt.subplots(1,1)
