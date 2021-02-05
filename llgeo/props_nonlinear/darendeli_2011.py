@@ -109,7 +109,7 @@ def curves(sstrn, PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
     Parameters
     -----------
     sstrn (dec) : array
-        Shearing strains of interest (in decimal, not %)
+        Shearing strains of interest (in %, not dec)
         Any numpy array will work, but should probably be log-spaced!
     a (-) : float
         Curvature coefficient (set as constant Phi_5)
@@ -131,6 +131,7 @@ def curves(sstrn, PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
     D_adj (dec) : array
         MEAN damping curve for given properties.
         Each value corresponds to shear strain levels given by sstrn
+        Note that these  are percentage values (not dec)
 
     Notes
     -----
@@ -145,7 +146,7 @@ def curves(sstrn, PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
               Table 8.12, Page 214, in Ref(1)
 
     '''
-    a, b, D_min, sstrn_r = params(PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean')
+    a, b, D_min, sstrn_r = params(PI, OCR, sigp_o, N, load_freq, type)
 
     # Normalized modulus reduction curve (Eq. 7.25)
     G_red = 1 / (1 + (sstrn / sstrn_r)**a)
@@ -156,7 +157,7 @@ def curves(sstrn, PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
                  -0.0005 * a ** 2 + 0.0002 * a + 0.0003 ]
 
     # Masing damping (Eq. 7.27)
-    D_mas_a1 = 1 / np.pi *   \
+    D_mas_a1 = 100 / np.pi *   \
                (4 * (sstrn - sstrn_r * np.log((sstrn + sstrn_r) / sstrn_r)) /  \
                (sstrn**2 / (sstrn + sstrn_r)) - 2)
 
@@ -167,7 +168,7 @@ def curves(sstrn, PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
     # Note that notation is a bit different in Pg. 214 and 174
     D_adjs = b * G_red**0.1 * D_mas + D_min
 
-    return(G_red, D_adjs)
+    return G_red, D_adjs
 
 # ------------------------------------------------------------------------------
 # Helper Functions - nothing to see here :)
