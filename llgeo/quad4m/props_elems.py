@@ -5,16 +5,8 @@ This module contains functions that help populate element properties for QUAD4M
 analysis, generally adding columns to the dataframe "elems" that then gets 
 exported to a ".q4r" file.
 
-MAIN FUNCTIONS:
-This module contains the following functions:
-    * elem_stresses: adds vertical and mean effective stress to elems dataframe
-    * map_rf: map random field to elems dataframe.
-    
 '''
-
-# ------------------------------------------------------------------------------
-# Import Modules
-# ------------------------------------------------------------------------------
+import llgeo.props_nonlinear.darendeli_2011 as q4m_daran
 import numpy as np
 import pandas as pd
 
@@ -72,8 +64,8 @@ def elem_stresses(nodes, elems, k = 0.5, unit_w = 21000):
 
     # If there isn't already a unit_w in elems dataframe, then choose a uniform
     # one for all (if none provided, defaults to 21000 N/m3)
-    if 'unit_w' not in list(elems):
-        elems['unit_w'] = unit_w * np.ones(len(elems))
+    if 'unit_w_eff' not in list(elems):
+        elems['unit_w_eff'] = unit_w * np.ones(len(elems))
 
     # Get the top of each node column (goes left to right)
     top_ys_nodes = [col['y'].max() for _, col in nodes.groupby('node_i')]
@@ -93,7 +85,7 @@ def elem_stresses(nodes, elems, k = 0.5, unit_w = 21000):
         # Here I flip the order so that its easier for stress calc (top down)  
         ns = np.flip(soil_col['n'].to_numpy())
         ys = np.flip(soil_col['yc'].to_numpy())
-        gs = np.flip(soil_col['unit_w'].to_numpy())
+        gs = np.flip(soil_col['unit_w_eff'].to_numpy())
 
         # Get y_diff, the depth intervals between center of elements
         y_diff_start = y_top - np.max(ys) # depth to center of top element
@@ -251,158 +243,6 @@ def map_layers(elems, lay_1D, reverse_lay = True):
   return elems
 
 
-def add_bound_conds(bc_type, nodes):
-  ''' Assigns boundary conditions to the "nodes" dataframe
-
-  Purpose
-  -------
-  Given a type of boundary conditions (bc_type), this adds a "BC" column to 
-  the dataframe "nodes" with integers that determine the type of boundary
-  condition that QUAD4M will apply at that node. 
-  
-  From QUAD4M manual:
-    0 - Free nodal point
-    1 - Input horizontal earthquake motion applied. Free in Y direction.
-    2 - Input vertical earthquake motion applied. Free in X direction.
-    3 - Input horizontal and vertical earthquake motion applied.
-    4 - Transmitting base node.
-      
-  Parameters
-  ----------
-  bc_type : str
-      Describes the type of boundary condition configuration (limited so far).
-      One of:
-        rigidbase_box: fixes Y on left and right boundaries, rigid base at the
-                       bottom. Since assignment relies on min(x), max(x), and
-                       min(y), the edges of the mesh must be straight (box-like)
-                       otherwise this function will fail.
-
-  nodes : dataframe
-      contains geometry information of nodes in QUAD4M model (see geometry.py)
-      Must, at a minimum, contain: [n, x, y]
-      
-  Returns
-  -------
-  nodes : dataframe
-      Returns the same dataframe, except with a new column: ['BC']
-
-  Notes
-  -----
-  * This should really be extended to have more options.
-      
-  Refs
-  ----
-    (1) Hudson, M., Idriss, I. M., & Beikae, M. (1994). User’s Manual for
-        QUAD4M. National Science Foundation.
-            See: Fortran code describing inputs (Pg. A-5)
-  '''
-
-  # Initialize array of boundary conditions (0 = free nodes)
-  ndpt = len(nodes)
-  BC = 0 * np.ones(ndpt)
-
-  if bc_type == 'rigidbase_box':
-
-    # Apply a fixed-y BC at left (0, all) and right (1, all) boundaries
-    loc_mask = get_mask([(0, 'all', 'dec'), (1, 'all', 'dec')], nodes)
-    BC[loc_mask] = 2
-
-    # Apply a rigid-base at the bottom boundary (all, 0)
-    loc_mask = get_mask([('all', 0, 'dec')], nodes)
-    BC[loc_mask] = 3
-
-  else:
-
-    # If bc_type doesn't match any pre-coded options, raise an error 
-    error  = 'Type of boundary condition not recorgnized\n'
-    error += 'Only "rigidbase_box" is available so far.'
-    raise Exception(error)
-
-  nodes['BC']  = BC
-  
-  return(nodes)
-
-
-def add_acc_outputs(locations, out_type, nodes):
-  ''' Adds output acceleration options at nodes for QUAD4M analyses.
-      
-  Purpose
-  -------
-  This adds a column 'OUT' to the nodes dataframe, that determines the locations
-  where acceleration time histories will be printed after a QUAD4M analyses.
-
-  Parameters
-  ----------
-  locations : list of touples
-      Each element is a touple with: (horz, vert, ij_or_dec, out_type)
-      that dictates where and which output accelerations will be printed.
-      
-      horz : horizontal location where accelerations should be printed
-             if ij: must be "i" of node number (or be 'all')
-             if dec:ratio from the left and rightwards
-                    (0 = left corner, 1 = right corner, 0.5 = center, or 'all')
-                
-      vert : vertical location where accelerations should be printed
-             if ij: must be "j" of node number (or be 'all')
-             if dec: ratio from the bottom and upwards
-                     (0 = bott corner, 1 = top corner, 0.5 = center, or 'all')
-      
-      ij_or_dec : either 'ij' or 'dec', determines how horz and vert are read
-                   if 'ij'  : horz and vert must be node numbers.
-                   if 'dec' : horz and vert must be ratio of domain
-
-  out_type :
-      Type of acceleration to output.
-      Can either be a single string: 'X', 'Y', 'B'(oth), in which case the same
-      acceleration output will be applied to all locations, 
-      OR it can be a list of strings with same length as locations, where 
-      each location will be applied a different out_type.
-
-  nodes : datafrmame
-      Dataframe with node information where acc outputs will added
-      Generally created by "geometry.py"
-      At a minimum, must include: ['x', 'y']
-      
-  Returns
-  -------
-  nodes : dataframe
-      Returns the same dataframe, except with a new column: ['OUT']
-
-  Notes
-  -----
-  * From QUAD4MU manual:
-      0 - No acceleration history output
-      1 - X acceleration history output
-      2 - Y acceleration history output
-      3 - Both X and Y acceleration history output
-
-  Refs
-  ----
-    (1) Hudson, M., Idriss, I. M., & Beikae, M. (1994). User’s Manual for
-        QUAD4M. National Science Foundation.
-            See: Fortran code describing inputs (Pg. A-5)
-  '''
-
-  # Initialize array of output options (0 = no output)
-  ndpt = len(nodes)
-  OUT = 0 * np.ones(ndpt)
-  out_types_opts = {'X': 1, 'Y':2, 'B':2, 'x': 1, 'y':2, 'b':2}
-  
-  # Turn out_type into list if it is not one
-  if not isinstance(out_type, list):
-    out_type = [out_type] * len(locations)
-
-  # Iterate through provided locations:
-  for loc, out in zip(locations, out_type):
-    loc_mask = get_mask([loc], nodes) # Get mask of where to apply out_type
-    out_int = out_types_opts[out]           # Get int corresponding to out_type 
-    OUT[loc_mask] = out_int                 # Apply to array
-  
-  # Add results to nodes dataframe and return
-  nodes['OUT'] = OUT
-  return nodes
-
-
 def add_str_outputs(locations, out_type, elems):
   ''' Adds stress output options at nodes for QUAD4M analyses.
       
@@ -489,6 +329,7 @@ def add_str_outputs(locations, out_type, elems):
   elems['LSTR'] = LSTR
   return elems
 
+
 def add_ini_xl(locations, value, elems):
   ''' Very simple function: adds column "XL" to elems where all are "value".
   
@@ -509,69 +350,6 @@ def add_ini_xl(locations, value, elems):
   elems['XL'] = value
 
   return elems
-
-def add_ini_conds(locations, ics, nodes):
-  ''' Adds initial conditions to nodes (disp, vel, acc). 
-      
-  Purpose
-  -------
-  Adds initial conditions (disp, vel, acc) given by *ics* to *nodes* as given
-  by *locations*. 
-      
-  Parameters
-  ----------
-  locations : list of touples
-      Each element is a touple with: (horz, vert, ij_or_dec, out_type)
-      that dictates which nodes apply to given value.
-      
-      horz : horizontal location where accelerations should be printed
-             if ij: must be "i" of node number (or be 'all')
-             if dec:ratio from the left and rightwards
-                    (0 = left corner, 1 = right corner, 0.5 = center, or 'all')
-                
-      vert : vertical location where accelerations should be printed
-             if ij: must be "j" of node number (or be 'all')
-             if dec: ratio from the bottom and upwards
-                     (0 = bott corner, 1 = top corner, 0.5 = center, or 'all')
-      
-      ij_or_dec : either 'ij' or 'dec', determines how horz and vert are read
-                   if 'ij'  : horz and vert must be node numbers.
-                   if 'dec' : horz and vert must be ratio of domain
-      
-  ics : list of numpy arrays
-      Each element should by a (1, 6) array containing the initial conditions
-      for the node. The length of the list should be same as length of locations
-      since both will be iterated through together.      
-
-  nodes : datafrmame
-      Dataframe with node information where acc outputs will added
-      Generally created by "geometry.py"
-
-  Returns
-  -------
-  nodes : datafrmame
-      Outputs same dataframe, but with new columns: 
-       ['X2IH','X1IH','XIH','X2IV','X1IV','XIV']
-
-  Refs
-  ----
-    (1) Hudson, M., Idriss, I. M., & Beikae, M. (1994). User’s Manual for
-        QUAD4M. National Science Foundation.
-            See: Fortran code describing inputs (Pg. A-5)
-  '''
-
-  # Initialize array of output options (0 = no output)
-  ndpt = len(nodes)
-  params = ['X2IH', 'X1IH', 'XIH', 'X2IV', 'X1IV', 'XIV']
-  INITARR = np.zeros((ndpt, len(params)))
-
-  for loc, ic in zip(locations, ics):
-    loc_mask = get_mask(loc, nodes) # Get mask of where to apply out_type
-    INITARR[loc_mask, :] = ic                # Apply boundary conditions
-  
-  # Add results to nodes dataframe and return
-  nodes[params] = INITARR
-  return nodes
 
 
 def add_uniform_props(properties, elems):
@@ -611,28 +389,97 @@ def add_watertable(j, elems, unitw_water = 9807):
   # Add water effects 
   old_gamma = elems['unit_w'].values
   new_gamma = old_gamma - diff_gamma
-  elems['unit_w'] = new_gamma
+  elems['unit_w_eff'] = new_gamma
 
   return elems
+
+
+def add_darendeli_curves(elems, dec = 0):
+    ''' Generate Darendeli soil reduction curves and soil numbers.
+        
+    Purpose
+    -------
+    Given the elems dataframe, this creates darendeli curves with the mean 
+    stress, plasticity index, and overconsolidation ratio. It will create 
+    curves for unique combinations of these parameters, ROUNDED to "dec" decimal
+    places. THIS ASSUMES STRESS IS GIVEN IN PASCALS, AND TRANSFORMS TO ATM.
+        
+    Parameters
+    ----------
+    elems : dataframe
+        Contains element information. At a minimum, the following cols must 
+        exist: ['PI', 'OCR', 'sigma_m']. This assumes sigma_m is in pascals 
+        and transforms it to atm for the darendeli curves.
+        
+    dec : int
+        Number of decimal places to use when rounding parameters, which will
+        then be used to get unique combinations of parameters, to avoid 
+        creating duplicate curves.
+        
+    Returns
+    -------
+    curves : list of dict
+        Each list element corresponds to one curve, and contains soil number,
+        description, and G/Gmax and damping curves.
+
+    elems : dataframe
+        Returns input dataframe except with added column: 's_num', which corr-
+        esponds to the element number (+1) of the corresponding curve in curves. 
+
+    '''
+    
+    if not set(['PI', 'OCR', 'sigma_m']).issubset(list(elems)):
+        mssg = 'Error when adding Darendeli curves to elements:\n'
+        mssg+= '   PI, OCRm and sigma_m columns must exist in elems dataframe'       
+        raise Exception(elems)
+    
+    data = elems.loc[:, ['PI', 'OCR', 'sigma_m']].values
+    data = np.round(data, dec)
+    uniq_data = np.unique(data, axis = 0)
+    elems['s_num'] = np.empty(len(elems))
+
+    curves = []
+    for i  in range(len(uniq_data)):
+        mask = np.where((data == uniq_data[i, :]).all(axis = 1))[0]
+        elems.loc[mask, 's_num'] = i + 1
+
+        daran_inputs = {'sstrn' : np.logspace(-4, 0, 25),
+                        'PI'    : uniq_data[i, 0],
+                        'OCR'   : uniq_data[i, 1],
+                        'sigp_o': uniq_data[i, 2] / 101325}
+
+        description = 'PI={:2.0f} OCR={:2.0f} S={:4.2f}atm'.\
+                   format(*[daran_inputs[l] for l in ['PI', 'OCR', 'sigp_o']])
+
+        Gred, D_adjs = q4m_daran.curves(**daran_inputs)
+
+        curves += [{'S_name': str(i + 1),
+                    'S_desc': description,
+                    'G_strn': daran_inputs['sstrn'],
+                    'G_mred': Gred,
+                    'D_strn': daran_inputs['sstrn'],
+                    'D_damp': D_adjs}]
+
+    return curves, elems
 
 
 # ------------------------------------------------------------------------------
 # Helper Functions
 # ------------------------------------------------------------------------------
 
-def get_mask(locations, nodes):
-  ''' Determines nodes mask of where locations is met
+def get_mask(locations, elems):
+  ''' Determines elements mask of where locations is met
       
   Purpose
   -------
   Given a list of locations, this function will return A SINGLE MASK, that 
-  specifies nodes that meet conditions for ANY OF THE locations specified.
+  specifies elems that meet conditions for ANY OF THE locations specified.
       
   Parameters
   ----------
   locations : list of touples
       Each element is a touple with: (horz, vert, ij_or_dec)
-      that dictates which nodes are to be included in mask.
+      that dictates which elems are to be included in mask.
       Any node that meets conditions of *any* one location will be included.
       
       horz : horizontal location where accelerations should be printed
@@ -651,53 +498,43 @@ def get_mask(locations, nodes):
 
       out_type : type of acceleration to output. [ 'X', 'Y', 'B'(oth) ]
 
-  nodes : datafrmame
-      Dataframe with node information where acc outputs will added
+  elems : datafrmame
+      Dataframe with elems information
       Generally created by "geometry.py"
-      At a minimum, must include: ['x', 'y']
-      NOTE THAT THIS CAN ACTUALLY BE NODES OR ELEMS... 
 
   Returns
   -------
   masks : list of numpy arrays
-      list of masks, where each element is a mask of length len(nodes), 
-      specifying whether each node is to be included in location.
+      list of masks, where each element is a mask of length len(elems), 
+      specifying whether each elem is to be included in location.
   '''
 
-  # Determine if dataframe provided is nodes or elems, and change keys appr.
-  coord_cols = ['x', 'y']
-
-  if not set(coord_cols).issubset(list(nodes)):
-    coord_cols = ['xc', 'yc']
-    
-    if not set(coord_cols).issubset(list(nodes)):
-      mssg = '''Cannot determine if nodes or elems... fix!!!
-                Should have either 'y' or 'yc' in columns '''
-      raise Exception(mssg)
-  
-  # Note that from now on, I refer to "nodes", even though it could be "elems"
-  ndpt = len(nodes)
-
   # Iterate through provided locations:
+  nelm = len(elems)
   one_location_masks = []
   for horz, vert, ij_or_dec in locations:
 
     # First do X mask, then Y mask, then combine using AND logical
     xy_masks = []
+
+    if ij_or_dec == 'ij':
+      coord_lbls = ['i', 'j']
+    else:
+      coord_lbls = ['xc', 'yc']
     
-    for coord_type, coord in zip(coord_cols, [horz, vert]):
+    for coord_lbl, coord in zip(coord_lbls, [horz, vert]):
 
       # If user specified 'all', then everywhere
       if coord == 'all':
-        xy_masks += [ True * np.ones(ndpt) ]
+        xy_masks += [ True * np.ones(nelm) ]
       
       # If i or j is given, just find where a match occurs
       elif ij_or_dec == 'ij':
-        xy_masks += [ nodes[coord_type] == coord ] 
+        xy_masks += [ elems[coord_lbl] == coord ] 
 
       # Otherwise, find the closest match to the provided ratio
       elif ij_or_dec == 'dec':
-        values  = nodes[coord_type] # List of coordinates (x then y)
+        values  = elems[coord_lbl] # List of coordinates (x then y)
 
         # Find the exact coordinate the user asked for (based on coord="ratio") 
         target  = np.min(values) + coord * (np.max(values)-np.min(values))
@@ -743,3 +580,4 @@ def map_rf_check_inputs(elems, prop, z):
   # Print out errors
   err_out = [errors[f] for f in err_flags]
   return err_out
+
