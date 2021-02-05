@@ -150,3 +150,35 @@ def num2str_F70(num, width, dec = False, space = 0):
     str_out = np.format_float_positional(num, **frmt)
 
     return(str_out)
+
+
+def list_to_matrix(i, j, values):
+    ''' Given a series of row values (i) and column values (j), and corresponding
+        values, this re-formats the data into a matrix. i becomes the rows and 
+        j becomes the columns, and the matrix is zero-indeced. Will return error
+        if there are duplicate ij values.'''
+
+    # Make sure i and j are 2D arrays of integers
+    i = np.array(i, dtype = int).reshape(-1, 1)
+    j = np.array(j, dtype = int).reshape(-1, 1)
+
+    # Make sure that ij pairs are unique
+    ij = np.concatenate([i, j], axis = 1)
+    ij_unique = np.unique(ij, axis = 0)
+
+    if len(ij_unique) < len(ij):
+        mssg = 'error in list_to_matrix function:'
+        mssg+= 'i and j values must be unique'
+        raise Exception(mssg)
+
+    # Turn list to column
+    nrows = np.max(i) # assumes 1-indexed
+    ncols = np.max(j) # assumes 1-indexed
+    matrix = np.full((nrows, ncols), np.nan)
+
+    for row, col, val in zip(i, j, values):
+        matrix[row - 1, col - 1] = val # assumes 1-indexed
+ 
+    return matrix
+
+
