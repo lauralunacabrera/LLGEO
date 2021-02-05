@@ -1,5 +1,6 @@
 #%%
 import llgeo.quad4m.props_elems as q4m_elems
+import llgeo.quad4m.props_nodes as q4m_nodes
 import llgeo.quad4m.db_utils as q4m_db
 import llgeo.quad4m.geometry as q4m_geom
 
@@ -17,9 +18,9 @@ jwater = 3
 props_ini = [{'unit_w' : 21000, 'po' : 0.450, 'PI' : 0, 'OCR' : 1},
              {'unit_w' : 19000, 'po' : 0.450, 'PI' :15, 'OCR' : 1}]
 
-nodes = q4m_elems.add_bound_conds('rigidbase_box', nodes)
-nodes = q4m_elems.add_acc_outputs(acc_locations, 'X', nodes)
-nodes = q4m_elems.add_ini_conds([], [], nodes)
+nodes = q4m_nodes.add_bound_conds('rigidbase_box', nodes)
+nodes = q4m_nodes.add_acc_outputs(acc_locations, 'X', nodes)
+nodes = q4m_nodes.add_ini_conds([], [], nodes)
 
 elems = q4m_elems.map_layers(elems, np.zeros(len(elems)))
 elems = q4m_elems.add_uniform_props(props_ini, elems)
