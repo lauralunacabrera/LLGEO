@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
     
 setuptools.setup(
     name = 'llgeo',
-    version = '0.0.6',
+    version = '0.0.7',
     author = 'Laura Luna',
     author_email = 'lauralunacabrera@gmail.com',
     description = 'Python library for Geotechnical Engineering',
@@ -18,7 +18,7 @@ setuptools.setup(
                     'Operating System :: OS Independent',
                       ],
 
-    python_requires = '>=3.6',
+    python_requires = '>=3.7',
 
     packages = setuptools.find_packages(),
 
