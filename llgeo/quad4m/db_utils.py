@@ -221,7 +221,7 @@ def search(db, conditions, return_col = 'all'):
         Defaults to returning all columns.
         
     Returns
-    -------s
+    -------
     result : numpy array or dataframe
         db entries that match condition, with output columns dictated by
         return_col. If there is only one return_col, then result is np array,
