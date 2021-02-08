@@ -26,9 +26,35 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 # ------------------------------------------------------------------------------
 # Helper Functions
 # ------------------------------------------------------------------------------
+def plot_mesh(verts, verts_elems, ax, mesh_kwargs = {}):
 
-def plot_mesh_elem_prop(verts, verts_elem, nodes, prop, units, fig, ax,
-                        colors = False, pc_kwargs = {}, cb_kwargs = {}):
+    # Get default kwargs and update with provided mesh_kwargs
+    kwargs = {'edgecolor': 'k', 'linewidth': 0.2}
+    kwargs.update(mesh_kwargs)
+
+    # Plot mesh
+    pc = mpl.collections.PolyCollection(verts, **kwargs)
+    ax.add_collection(pc)
+    ax.axis('equal')
+
+    # Return axis handles and polycollection
+    return ax, pc
+
+
+
+
+def plot_mesh_node_prop(elems, nodes, prop, units, fig, ax,
+                        sc_kwargs = {}):
+
+    # Get vertices and elements in proper format
+    verts, verts_elems = get_verts(elems, nodes)
+
+    # TODO
+
+
+
+def plot_mesh_elem_prop(elems, nodes, prop, units, fig, ax,
+                        colors = False, mesh_kwargs = {}, cb_kwargs = {}):
     ''' Plots filled mesh with colots mapped to values of prop
         
     Purpose
@@ -43,7 +69,7 @@ def plot_mesh_elem_prop(verts, verts_elem, nodes, prop, units, fig, ax,
         List, where each element is a list of four touples (x, y) that defines
         the coordinates of an element in CCW order.
         
-    verts_elem : list of df series
+    verts_elems : list of df series
         (see get_verts)
         Each element contains rows from elems dataframe, in the same order as 
         verts.
@@ -64,18 +90,17 @@ def plot_mesh_elem_prop(verts, verts_elem, nodes, prop, units, fig, ax,
                 
     '''
 
+    # Get vertices and elements in proper format
+    verts, verts_elems = get_verts(elems, nodes)
+
     # Make sure that the property exists in elems
-    if prop not in verts_elem[0].index.to_list():
+    if prop not in verts_elems[0].index.to_list():
         msg = 'Error in plotting mesh of '+ prop + '\n'
         msg+= 'the property does not exist in elems dataframe'    
         raise Exception(msg)
 
-    # Specify default kwargs, but update to provided ones
-    kwargs = {'edgecolor': 'k', 'linewidth': 0.05}
-    kwargs.update(pc_kwargs)
-
-    # Get velues from "verts_elem"
-    vals = np.array([float(elem[prop]) for elem in verts_elem])
+    # Get values from "verts_elems"
+    vals = np.array([float(elem[prop]) for elem in verts_elems])
 
     # Outline color schemes (either discrete or continuous color maps)
     if colors:
@@ -89,16 +114,14 @@ def plot_mesh_elem_prop(verts, verts_elem, nodes, prop, units, fig, ax,
             idx = int(i % len(colors))
             facecolors += [colors[idx]]
 
-        kwargs.update({'facecolors' : facecolors})
+        mesh_kwargs.update({'facecolors' : facecolors})
     
     else:
-        kwargs.update({'array' : vals})
+        mesh_kwargs.update({'array' : vals, 'edgecolor': 'k', 'linewidth':0.02})
 
-    # Add to plot
-    pc = mpl.collections.PolyCollection(verts, **kwargs)
-    ax.add_collection(pc)
-    # ax.axis('equal')
-    
+ 
+    ax, pc = plot_mesh(verts, verts_elems, ax, mesh_kwargs)
+
     # Add colorbar 
     # TODO - fix this for discrete colors
     kwargs = {'visible': True, 'orientation':'horizontal',
@@ -133,7 +156,7 @@ def get_verts(elems, nodes):
     -------
     This function creates a list "verts", where each element is a list of four
     touples that defines the corners of the element. It also returns a list 
-    "verts_elem" where each row is an row of the elems dataframe, corresponding
+    "verts_elems" where each row is an row of the elems dataframe, corresponding
     to the "verts" order. 
         
     Parameters
@@ -152,7 +175,7 @@ def get_verts(elems, nodes):
         List, where each element is a list of four touples (x, y) that defines
         the coordinates of an element in CCW order.
         
-    verts_elem : list of df series
+    verts_elems : list of df series
         Each element contains rows from elems dataframe, in the same order as 
         verts.
         
