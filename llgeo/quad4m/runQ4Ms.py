@@ -4,21 +4,95 @@ DESCRIPTION:
 This module contains functions that run the executable QUAD4MU.exe automatically
 for a given set of QUAD4M input files.
 
-MAIN FUNCTIONS:
-This module contains the following functions:
-    * run_QUAD4M: runs one instance of QUAD4MU, given all input files and dirs
-
 '''
 from memory_profiler import memory_usage
+import llgeo.utilities.files as llgeo_fls
 from threading import Thread
 import subprocess as sub
 import os
 import numpy as np
-import math
 import time
 
 # ------------------------------------------------------------------------------
-# Main functions
+# Running QUAD4M stages
+# ------------------------------------------------------------------------------
+
+def runQ4M_stages(stages, dir_q4m, nthreads, del_flag = False):
+    ''' his runs a QUAD4M stage ASSUMING A VERY SPECIFIC FILE STRUCTURE
+        
+    Purpose
+    -------
+    This automates running several stages of QUAD4M analyses, where each stage
+    constitutes a group of QUAD4M models that share some properties.
+    THIS ASSUMES A VERY SPECIFIC FILE STRUCTURE:
+    
+        dir_q4m (contains .EXE file) 
+        |
+        |--> Quad4MU.exe
+        |
+        |--> stages[0] --> contains inputs for stage 0; will contain all outputs
+        |
+        |--> stages[1] --> contains inputs for stage 1; will contain all outputs
+        :
+        |--> stages[-1]--> contains inputs for stage N; will contain all outputs
+
+    
+    Parameters
+    ----------
+    stages : list of str
+        Each element is the name of a subdirector in dir_q4m that contains input
+        files for analyses within this stage.
+        Each stage subdirectory must contain .q4r and .dat files for each model
+        and output files (.out .bug .acc and/or .str) will be saved there.
+        
+    dir_q4m : str
+        relative or absolute directory to where .EXE file is saved and where
+        stage subdirectories are located.
+
+    nthreads : int
+        Number of threads to use when running analyses (make sure to leave one
+        or two open for the OS)
+
+    del_flag : bool
+        If true, will delete all output files that already exist in stages
+        subdirectories
+           
+    '''
+
+    # Change working directory to where EXE file is saved
+    ini_path = os.getcwd()
+    os.chdir(dir_q4m)
+    dir_q4m = './'
+        
+    # Get a list of inputs for all models to be run
+    dq4ms, dwrks, douts = [], [], [] 
+    fq4rs, fdats, fouts, fbugs = [], [], [], []
+
+    for stage in stages:
+        files = [f for f in sorted(os.listdir(stage+'/'))if f.endswith('.q4r')]
+        fq4rs += files
+        fdats += [f.replace('.q4r', '.dat') for f in files]
+        fouts += [f.replace('.q4r', '.out') for f in files]
+        fbugs += [f.replace('.q4r', '.bug') for f in files]
+        dq4ms += len(files) * [ './' ]
+        dwrks += len(files) * [ stage + '/' ]
+        douts += len(files) * [ stage + '/' ]
+    
+        # Careful here! Will delete all existing outputs if true
+        if del_flag:
+            llgeo_fls.delete_contents(stage + '/', ['out', 'bug', 'acc', 'str'])
+
+    # Run in parallel
+    runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, nthreads)
+
+    # Return back to original working directory
+    os.chdir(ini_path)
+
+    return True
+
+
+# ------------------------------------------------------------------------------
+# Running a single QUAD4M file
 # ------------------------------------------------------------------------------
 
 def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
@@ -48,7 +122,7 @@ def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
     dir_wrk : str
         path to working directory, where .q4r and .dat files are stored
          for this simulation. Must be either relative to dir_q4m, or absolute.
-    dir_out: str
+    dir_out : str
         path to output directory, where QUAD4M outputs will be stored.
         Must be either relative to dir_q4m, or absolute.
     file_q4r : str
@@ -136,40 +210,106 @@ def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
     return True
 
 
-def runQ4Ms_series(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs):
+# ------------------------------------------------------------------------------
+# Running many QUAD4M files
+# ------------------------------------------------------------------------------
 
-    for i, args in enumerate(zip(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs)):
+def runQ4Ms_series(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, t = False):
+    '''Given a list of runQ4M inputs, this runs the models in series'''
+
+    inputs = zip(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs)
+    for i, args in enumerate(inputs):
         _ = runQ4M(*args)
-        print('Processed file no. ' + str(i+1))
+        
+        if t:
+            print('Thread {:d} processed model: '.format(t) +\
+                   fq4rs[i].replace('.q4r', ''), flush = True)
 
     return True
 
 
-def runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, max_workers):
+def runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, nthreads):
+    ''' Given a list of runQ4M inputs, this runs the models in parallel
 
-    all_args = [a for a in zip(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs)]
-    num_groups = math.ceil( len(all_args)/max_workers)
-    print('Starting {:d} Threads to Process {:d} Groups'.format(max_workers, num_groups))
-    
+    Steps:
+        1) Split models to run in n groups (n = "num_workers") of roughly the 
+           same size.
+        2) Initialize a thread for each group, where the target is running the
+           models within that group in series.
+        3) Start each thread, then join right after.
+
+    Structure:
+
+               ____ thread 1 ____ thread 1 __...__ thread 1 ____
+              |      sim 1         sim 2             sim n      |
+              |                                                 |
+              |                                                 |
+              |____ thread 2 ____ thread 2 __...__ thread 2 ____|
+    start ----|      sim 1          sim 2            sim n      | ---- join
+              |                                                 |
+              |                                                 | 
+              .                                                 .
+              |____ thread m ____ thread m __...__ thread m ____|
+                     sim 1            sim 2         sim n
+
+    '''
+
+    # Make sure that the lists of inputs are the same size
+    arg_keys = ['dq4ms', 'dwrks', 'douts', 'fq4rs', 'fdats', 'fouts', 'fbugs']
+    arg_vals = [  dq4ms,   dwrks,   douts,   fq4rs,   fdats,   fouts,  fbugs]
+
+    lengths = [len(i) for i in arg_vals]
+    if len(np.unique(lengths)) > 1:
+        mssg  = 'Error in running QUAD4M in parallel\n'
+        mssg += 'All arguments must be of the same length'
+        raise Exception(mssg)
+
+    # Split arguments into n groups (n = "nthreads") of approx. same size 
+    #   See: tinyurl.com/8knf90ek 
+    #   Grouped arguments are turned into dictionary so that they may be passed
+    #   as keyword arguments to the series runner 
+    stop = 0
     grouped_args = []
-    for n in range(num_groups):
-        ifrom = max_workers * n
-        ito   = max_workers * (n + 1)   
-        grouped_args += [ all_args[ifrom : ito] ]
+    q, r = divmod(len(dq4ms), nthreads)
 
-    for n, group in enumerate(grouped_args):
-        start = time.time()
-        print('Starting with group: ' +str(n+1))
-        ts = [Thread(target = runQ4M, args = args) for args in group] 
-        [t.start() for t in ts]
-        [t.join() for t in ts]
-        end = time.time()
-        print('Concluded with group: '+str(n+1)+'in '+str(int(end-start))+'s')
+    for i in range(1, nthreads + 1):
+        start = stop
+        stop += q + 1 if i <= r else q
+        grouped_args +=[{k : v[start:stop] for k, v in zip(arg_keys, arg_vals)}]
 
-    return True
+    # Print starting confirmation
+    print('Starting {:d} Threads to Process {:d} Simulations'.\
+           format(nthreads, len(dq4ms)))
+    print('(~{:d} Simulations per Thread)'.format(q))
+    
+    # Create a thread for each group
+    ts = []
+    for i, ga in enumerate(grouped_args):
+        print('Thread {:d} will run:'.format(i + 1))
+        print(ga['fq4rs'])
+        ga.update({'t': i + 1})
+        t = Thread(target = runQ4Ms_series, kwargs = ga)
+        ts.append(t)
+    
+    # Run and time :)
+    start = time.time()
+    [t.start() for t in ts]
+    [t.join() for t in ts]
+    end = time.time()
 
+    # Print ending confirmation and return
+    print('Concluded all sims in '+ str(int(end-start)) +' sec')
 
-def run_QUAD4Ms_series_mem(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, max_workers = None):
+    
+# ------------------------------------------------------------------------------
+# To keep track of memory
+# ------------------------------------------------------------------------------
+# Just used these once to check that memory use wasn't crazy when initializing
+# many instances of wine. Didn't end up being much of a problem.
+
+def run_QUAD4Ms_series_mem(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs,
+                           nthreads = None):
+    ''' Wrapper for run_QUAD4Ms_series that also tracks memory usage '''
 
     args = (dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs)
     mem = memory_usage(proc = (runQ4Ms_series, args), interval = 0.5, 
@@ -177,9 +317,11 @@ def run_QUAD4Ms_series_mem(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, max_
     return np.max(mem)
 
 
-def run_QUAD4Ms_parallel_mem(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, max_workers):
+def run_QUAD4Ms_parallel_mem(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs,
+                           nthreads):
+    ''' Wrapper for run_QUAD4Ms_parallel that also tracks memory usage '''
 
-    args = (dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, max_workers)
+    args = (dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, nthreads)
     mem = memory_usage(proc = (runQ4Ms_parallel, args), interval = 0.5, 
                                 timeout = 2, include_children = True)
 
