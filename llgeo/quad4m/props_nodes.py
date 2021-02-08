@@ -148,17 +148,20 @@ def add_acc_outputs(locations, out_type, nodes):
   # Initialize array of output options (0 = no output)
   ndpt = len(nodes)
   OUT = 0 * np.ones(ndpt)
-  out_types_opts = {'X': 1, 'Y':2, 'B':2, 'x': 1, 'y':2, 'b':2}
+  out_types_opts = {'X': 1, 'Y':2, 'B':3, 'x': 1, 'y':2, 'b':3}
   
   # Turn out_type into list if it is not one
+  if not isinstance(locations, list):
+    locations = [locations]
+    
   if not isinstance(out_type, list):
     out_type = [out_type] * len(locations)
 
   # Iterate through provided locations:
   for loc, out in zip(locations, out_type):
-    loc_mask = get_mask([loc], nodes) # Get mask of where to apply out_type
-    out_int = out_types_opts[out]           # Get int corresponding to out_type 
-    OUT[loc_mask] = out_int                 # Apply to array
+    loc_mask = get_mask(loc, nodes)    # Get mask of where to apply out_type
+    out_int = out_types_opts[out]      # Get int corresponding to out_type 
+    OUT[loc_mask] = out_int            # Apply to array
   
   # Add results to nodes dataframe and return
   nodes['OUT'] = OUT
@@ -280,6 +283,10 @@ def get_mask(locations, nodes):
   # Determine if dataframe provided is nodes or elems, and change keys appr.
   ndpt = len(nodes)
 
+  # If locations is not a list, turn it into one
+  if not isinstance(locations, list):
+    locations = [locations]
+
   # Iterate through provided locations:
   one_location_masks = []
   for horz, vert, ij_or_dec in locations:
@@ -287,7 +294,13 @@ def get_mask(locations, nodes):
     # First do X mask, then Y mask, then combine using AND logical
     xy_masks = []
     
-    for coord_type, coord in zip(['x', 'y'], [horz, vert]):
+    # Determine appropriate key to access from nodes
+    if ij_or_dec == 'ij':
+      coord_lbls = ['node_i', 'node_j']
+    else:
+      coord_lbls = ['x', 'y']
+
+    for coord_lbl, coord in zip(coord_lbls, [horz, vert]):
 
       # If user specified 'all', then everywhere
       if coord == 'all':
@@ -295,14 +308,14 @@ def get_mask(locations, nodes):
       
       # If i or j is given, just find where a match occurs
       elif ij_or_dec == 'ij':
-        xy_masks += [ nodes[coord_type] == coord ] 
+        xy_masks += [ nodes[coord_lbl] == coord ] 
 
       # Otherwise, find the closest match to the provided ratio
       elif ij_or_dec == 'dec':
-        values  = nodes[coord_type] # List of coordinates (x then y)
+        values  = nodes[coord_lbl] # List of coordinates (x then y)
 
         # Find the exact coordinate the user asked for (based on coord="ratio") 
-        target  = np.min(values) + coord * (np.max(values)-np.min(values))
+        target  = np.min(values) + coord * (np.max(values) - np.min(values))
         
         # Find the closest match in the mesh to the calculated target
         closest = values [np.argmin((values - target)**2)] 
