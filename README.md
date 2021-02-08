@@ -3,6 +3,13 @@
 
 This is a test version!
 
+
+
+TODO:
+1) utilities -> formatters
+    num2str and arr2str functions are an absolute disaster. Really need to fix them.
+
+
 STRUCTURE
 
 props_nonlinear/
