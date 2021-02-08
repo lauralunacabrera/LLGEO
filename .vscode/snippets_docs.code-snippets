@@ -86,6 +86,12 @@
 		"description": "Documentation for scripts"
 	},
 
+	"doc_rn": {
+		"prefix": "doc_rn",
+		"body": ["$CURRENT_YEAR-$CURRENT_MONTH-$CURRENT_DATE $CURRENT_HOUR:$CURRENT_MINUTE"],
+		"description": "Enter current date and time"
+	},
+
 	"doc_module": {
 		"prefix": "doc_module",
 		"body": ["''' one_line_description",
