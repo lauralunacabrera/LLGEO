@@ -215,8 +215,8 @@ def map_rf(elems, prop, z):
   err_check = map_rf_check_inputs(elems, prop, z)
 
   if len(err_check) > 0:
-    print(err_check)
-    return 0
+    mssg = [err + '\n' for err in err_check]
+    raise Exception(mssg)
 
   # Mapping
   mapped_z = [z[i-1, j-1] for i, j in zip(elems['i'], elems['j'])] 
@@ -330,24 +330,95 @@ def add_str_outputs(locations, out_type, elems):
   return elems
 
 
-def add_ini_xl(locations, value, elems):
-  ''' Very simple function: adds column "XL" to elems where all are "value".
-  
-  This function is written to keep format as other properties.... can't
-  see why we would have to add different init value for different elements,
-  so keeping it simple, but adding a placeholder in case some other features
-  need to be added later on.  
+def add_ini_xl(elems, curves, target, target_type):
+  ''' Adds initial strain and G for QUAD4M analyses.
+      
+  Purpose
+  -------
+  This populates the initial strain and G to be used in QUAD4M analyses. It 
+  takes in a "target", which can be either:
+      1) Integer to index modulus red curve (target_type = "idx").
+      2) Target strain level (target_type = "perc"). ~ no interpolation
 
-  Locations needs to be 'all'; otherwise exception will be raised.
+  This then assigns the appropriate G and XL for each element given their 
+  specified soil number.
+      
+  Parameters
+  ----------
+    elems : dataframe
+      Contains element information. At a minimum here, it must include:
+        [s_num, Gmax]
+        IMPORTANT! s_num is assumed to be 1-indexed (as it should be)
+      
+    curves : list of dict
+      Each list element corresponds to one curve, and contains soil number,
+      description, and G/Gmax and damping curves.
+
+    target : int or float
+      Specifies which values from "curves" to initialize.
+      Can be one of two types:
+
+      1) Integer to index curves. THIS IS ZERO-INDEXED!
+         (Ex: if target = 2, then the third element in curves will be used to
+         initialize XL and G) 
+         Here, target_type = 'idx'
+
+      2) Float as percentage strain to target. Note that this funciton will not
+         interpolate, but instead choose the closest available value.
+         Here, target_type = 'perc'
+
+    target_type : str
+      Specifies the type of target type: 'idx' if target is an integer index
+      or 'perc' if target is a percentage level of strain.
+
+  Returns
+  -------
+  elems : dataframe
+      Returns the same dataframe except with two new columns: [XL, G]
+            
+  Refs
+  ----
+  (1) Hudson, M., Idriss, I. M., & Beikae, M. (1994). User’s Manual for
+      QUAD4M. National Science Foundation.
+          See: Fortran code describing inputs (Pg. A-5)
   '''
 
-  if locations != 'all':
-    mssg = ''' Locations should be all... XL was assumed to be the same for all
-               elements. If you now have a reason for initializing different 
-               values, you'll have to code it in. Sorry! '''
-    raise Exception(mssg)
+  # Initalize outputs and extract soil numbers
+  XL   = np.empty(len(elems))
+  Gred = np.empty(len(elems))
+  soil_nums = elems['s_num'].values
 
-  elems['XL'] = value
+  # Iterate through unique soil numbers
+  for snum in np.unique(soil_nums):
+
+    # Correction: "curves" is zero indexed, but "soil_nums" is 1-indexed
+    # Also need to make sure it is an integer so that it can be an index
+    snum = int(snum - 1) # (turn to zero-indexed)
+
+    # Get shear modulus reduction curve
+    curve_xl   = curves[snum]['G_strn']
+    curve_gred = curves[snum]['G_mred']
+
+    # Get index based on target type; raise error if not understood
+    if target_type == 'idx':
+      idx = int(target)
+
+    elif target_type == 'perc':
+      idx = np.argmin((curve_xl - target)**2)
+
+    else:
+      mssg  = 'Error in initializing XL and G. Target type not understood.'
+      mssg += 'Must either be "idx" or "perc". Please read function docs.'
+      raise Exception(mssg)
+
+    # Add initialized values
+    mask = (elems['s_num'] == snum + 1) # CORRECT FOR 1 INDEXED
+    XL[mask] = curve_xl[idx]
+    Gred[mask] = curve_gred[idx]
+
+  # Add results to the elems dataframe and return
+  elems['XL'] = XL
+  elems['G'] = elems['Gmax'].values * Gred # G = Gmax * Gred
 
   return elems
 
@@ -394,7 +465,7 @@ def add_watertable(j, elems, unitw_water = 9807):
   return elems
 
 
-def add_darendeli_curves(elems, dec = 0):
+def add_darendeli_curves(elems, dec = 0, min_Gred = False):
     ''' Generate Darendeli soil reduction curves and soil numbers.
         
     Purpose
@@ -415,6 +486,10 @@ def add_darendeli_curves(elems, dec = 0):
         Number of decimal places to use when rounding parameters, which will
         then be used to get unique combinations of parameters, to avoid 
         creating duplicate curves.
+
+    min_Gred : float
+        Will put a minimum on the shear modulus reduction curves, so that 
+        it does not go to very low numbers at large strains. (CAREFUL!!!)
         
     Returns
     -------
@@ -440,19 +515,30 @@ def add_darendeli_curves(elems, dec = 0):
 
     curves = []
     for i  in range(len(uniq_data)):
-        mask = np.where((data == uniq_data[i, :]).all(axis = 1))[0]
-        elems.loc[mask, 's_num'] = i + 1
 
-        daran_inputs = {'sstrn' : np.logspace(-4, 0, 25),
+        # Assign soil number to the elements dataframe (must be 1-indexed)
+        mask = np.where((data == uniq_data[i, :]).all(axis = 1))[0]
+        elems.loc[mask, 's_num'] = i + 1 # 1-indexed
+
+        # Inputs for Darendeli curves
+        sstrn = np.outer(np.logspace(-4, 0, 5), np.arange(1,10,1)).flatten()
+        daran_inputs = {'sstrn' : sstrn,
                         'PI'    : uniq_data[i, 0],
                         'OCR'   : uniq_data[i, 1],
                         'sigp_o': uniq_data[i, 2] / 101325}
 
+        # Generate description of curve
         description = 'PI={:2.0f} OCR={:2.0f} S={:4.2f}atm'.\
                    format(*[daran_inputs[l] for l in ['PI', 'OCR', 'sigp_o']])
 
+        # Get darandeli curves
         Gred, D_adjs = q4m_daran.curves(**daran_inputs)
 
+        # Add minimum cap if one was provided
+        if min_Gred:
+          Gred[Gred < min_Gred] = min_Gred
+
+        # Arrange in dictionary for output
         curves += [{'S_name': str(i + 1),
                     'S_desc': description,
                     'G_strn': daran_inputs['sstrn'],
@@ -516,7 +602,8 @@ def get_mask(locations, elems):
 
     # First do X mask, then Y mask, then combine using AND logical
     xy_masks = []
-
+    
+    # Determine appropriate key to access from nodes
     if ij_or_dec == 'ij':
       coord_lbls = ['i', 'j']
     else:
@@ -537,7 +624,7 @@ def get_mask(locations, elems):
         values  = elems[coord_lbl] # List of coordinates (x then y)
 
         # Find the exact coordinate the user asked for (based on coord="ratio") 
-        target  = np.min(values) + coord * (np.max(values)-np.min(values))
+        target  = np.min(values) + coord * (np.max(values) - np.min(values))
         
         # Find the closest match in the mesh to the calculated target
         closest = values [np.argmin((values - target)**2)] 
