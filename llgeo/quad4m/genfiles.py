@@ -215,7 +215,7 @@ def gen_q4r(Q, elems, nodes, out_path, out_file):
     # Print lines to a file and return 
     # --------------------------------------------------------------------------
     with open(out_path+out_file, 'w') as q4r_file:
-        [q4r_file.write(line + '\n') for line in L]
+        [q4r_file.write(line + '\r\n') for line in L]
         q4r_file.close()
 
     return L
@@ -263,6 +263,7 @@ def gen_dat(soil_curves, out_path, out_file):
     # Some (extremely) basic error checking
     # ----------------------------------------------------------------------
     # TODO-wishlist: change to logging?
+    
     # TODO-soon: add more checks and create separate function?
     # Checks to complete:
     #   0) check that number of properties < 5-digit number
@@ -291,7 +292,7 @@ def gen_dat(soil_curves, out_path, out_file):
     # Format specifications that will be used to create the file lines.
     fmt01 = {'cols': 8, 'width': 10, 'space': 4}
     fmt02 = '{N:5d}  | {T:^18s} | {S:^8s} | {D:^20s} | '
-    fmt03 = '{lbl:-<{W}}'
+    fmt03 = '{lbl}'
     clim  = fmt01['cols'] * fmt01['width'] # max characters per line
 
     # Iterate through given soil_curves and add relevant lines
@@ -305,7 +306,7 @@ def gen_dat(soil_curves, out_path, out_file):
         #       next few lines to make it easier fix in the future if neeeded.
         # TODO-soon: Figure out the final configuration for inputs to here.
 
-        S_name = soil['S_name'] 
+        S_name = soil['S_name']
         S_desc = soil['S_desc']
         G_strn = soil['G_strn']
         G_mred = soil['G_mred']
@@ -319,9 +320,9 @@ def gen_dat(soil_curves, out_path, out_file):
                            S = S_name,
                            D = S_desc)
 
-        L += [fmt03.format(lbl = lbl, W = clim) ]  # Header
-        L += [ fff.arr2str_F70(G_strn, **fmt01) ]  # Shear strain
-        L += [ fff.arr2str_F70(G_mred, **fmt01) ]  # G/Gmax
+        L += [fmt03.format(lbl = lbl) ]  # Header
+        L += [ fff.arr2str(G_strn, **fmt01) ]  # Shear strain
+        L += [ fff.arr2str(G_mred, **fmt01) ]  # G/Gmax
 
         # Add damping curve
         # ----------------------------------------------------------------------
@@ -331,8 +332,8 @@ def gen_dat(soil_curves, out_path, out_file):
                            D = S_desc)
 
         L += [fmt03.format(lbl = lbl, W = clim) ]  # Header
-        L += [ fff.arr2str_F70(D_strn, **fmt01) ]  # Shear strain
-        L += [ fff.arr2str_F70(D_damp, **fmt01) ]  # Damping
+        L += [ fff.arr2str(D_strn, **fmt01) ]  # Shear strain
+        L += [ fff.arr2str(D_damp, **fmt01) ]  # Damping
 
 
     # Print lines to a file and return 
@@ -341,7 +342,7 @@ def gen_dat(soil_curves, out_path, out_file):
         os.makedirs(out_path)
 
     with open(out_path + out_file, 'w') as dat_file:
-        [dat_file.write(line + '\n') for line in L]
+        [dat_file.write(line + '\r\n') for line in L]
         dat_file.close()
 
     return L
