@@ -11,6 +11,9 @@ MAIN FUNCTIONS:
 This module contains the following functions:
     * simLAS1D: generates 1D realizations of a random field using LAS
     * simLAS2D: generates 2D realizations of a random field using LAS
+    * plot_rf : given a random field array and axes handles, returns a plot
+
+TODO - simLAS2d: automate finding K1, K2,  m, OR just request these directly
 '''
 
 # ------------------------------------------------------------------------------
@@ -113,6 +116,7 @@ def sim1d(n, xl, zm, zv, thx, fncnam, pa, pb, nsims, kseed):
     Zs = [z[:n] for z in Zs]
 
     return Zs
+
 
 def sim2d(n1, n2, xl, yl, zm, zv, thx, thy, fnc, pa, pb, nsims, outf, seed):
     ''' Generates 2D realizations of a random field using LAS.
