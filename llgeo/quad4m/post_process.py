@@ -72,7 +72,8 @@ def postprocess_stage(stage_path, out_path = None, out_file = None,
     for m, model in enumerate(models):
 
         # Print progress
-        print('Now processing model {:s} ({:d}/{:d}) '.format(model, m, N))
+        print('Now processing model {:s} ({:d}/{:d}) '.format(model, m, N),
+              flush = True)
         
         # Initialize output dictionary and success flags for this model
         output = {'model': model}
