@@ -255,7 +255,7 @@ def process_out(in_path, in_file):
     success = '     ** END OF JOB **\n'
     if lines[-2] != success:
         print('\t-->' + in_file + ' did not run completely')
-        return False, lines# (np.nan, np.nan, np.nan, np.nan)
+        return False, (np.nan, np.nan, np.nan, np.nan)
 
     # Find section breaks (marked by a line with a "1" -> so len(line) = 1)
     lines = [l.strip() for l in lines]
