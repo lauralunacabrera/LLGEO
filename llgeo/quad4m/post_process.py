@@ -15,16 +15,116 @@ import llgeo.utilities.files as llgeo_fls
 # ------------------------------------------------------------------------------
 # Main Functions
 # ------------------------------------------------------------------------------
+def postprocessQ4M(model_path, model_name, out_path = None, out_file = None,
+                   read_flags = None, del_txt = False):
+    ''' Post-process a single QUAD4M model with name "model_name".
+        
+    Purpose
+    -------
+    This module post-processes a single QUAD4M file and turns the results into
+    a python-friendly format.
+        
+    Parameters
+    ----------
+    model_path : str
+        Directory where output files are saved. All files must be contained 
+        in this same directory.
+        
+    model_name : str
+        Name of the model to post-process. All files must have the same name, 
+        with only the extension changing
+        (Ex. model1.out, model1.acc, model1.str, model1.bug)
+
+    out_path : str (optional)
+        Directory to save processed results as a pickle.
+        Defaults to None, so that no output file is created.
+
+    out_file : str (optional)
+        Name of file to save processed results as a pickle (should end in .pkl)
+        Defaults to None, so that no output file is created.
+
+    read_flags : dict (optional)
+        Dictionary indicating which output files to process. If given, should
+        at a minimum have the keys: ['out', 'acc', 'str'], with values being
+        bools. If false, this won't process that type of output file.
+        Defaults to all being True (make sure the files exist!)
+        
+    del_txt : bool (optional)
+        If true (and post = true), the text files for QUAD4M analyses will all
+        be deleted. Defaults to false. Note that the files will only be deleted
+        if the model was deemed to finish succcessfully, so that errors can be
+        properly debugged.
+
+    Returns
+    -------
+    outputs : dict
+        Dictionary of outputs from the model, where the contents depend on the
+        provided flags.
+        If no flags are given, dictionary will include:
+            ['model', 'run_success', 'peak_str', 'peak_acc', 'eq_props', 'Ts',
+            'acc_hist', 'str_hist']
+    '''
+    # If no flags were provided, turn all of them on
+    if not read_flags:
+        read_flags = {'out': True, 'acc': True, 'str': True}
+    
+    # Print progress
+    print('Now post-processing model {:s}'.format(model_name), flush = True)
+        
+    # Initialize output dictionary and success flags for this model
+    output = {'model': model_name}
+    success_flags = []
+
+    # Output file 
+    if read_flags['out']:
+        labels = ['peak_str', 'peak_acc', 'eq_props', 'Ts']
+        flag, values = process_out(model_path, model_name + '.out')
+        output.update({k : v for k, v in zip(labels, values)} )
+        success_flags += [flag]
+            
+    # Acceleration histories file
+    if read_flags['acc']:
+        flag, values = process_hist(model_path, model_name + '.acc')
+        output.update({'acc_hist' : values})
+        success_flags += [flag]
+
+    # Stress histories file
+    if read_flags['str']:
+        flag, values = process_hist(model_path, model_name + '.str')
+        output.update({'acc_str' : values})
+        success_flags += [flag]
+
+    # Determine whether the model ran everything correctly
+    if np.all(success_flags):
+        output.update({'run_success': True})
+    else:
+        output.update({'run_success': False})
+                  
+    # If required, save output file
+    if (out_path is not None) & (out_file is not None):
+        llgeo_fls.save_pkl(out_path, out_file, output, True)
+
+    # If required, delete text files
+    # Delete input files (if required)
+    extensions = ['.q4r', '.dat', '.shk', '.out', '.acc', '.str', '.bug']
+    [os.remove(model_path + model_name + e) for e in extensions 
+        if (del_txt) & # Delete if del_txt flag is True, AND
+           (output['run_success']) & # if the model ran successfully, ABD
+           (os.path.exists(model_path + model_name + e))] # if the file exists
+    
+    return output
+
 
 def postprocess_stage(stage_path, out_path = None, out_file = None,
-                      read_flags = None):
-    ''' Post-processes all models within a stage
+                      read_flags = None, save_sep = False, del_txt = False):
+    ''' Post-processes all QUAD4M models within a stage.
         
     Purpose
     -------
     A stage is a collection of QUAD4M models, which are all saved in the di-
     rectory "stage_path". This function processes the output files contained in
-    those directories and returns a list of outputs in Python-friendly formats. 
+    those directories and returns a list of outputs in Python-friendly formats.
+    This is simply a wrapper function for "postprocessQ4M".
         
     Parameters
     ----------
@@ -40,12 +140,24 @@ def postprocess_stage(stage_path, out_path = None, out_file = None,
         Name of file to save processed results as a pickle (should end in .pkl)
         Defaults to None, so that no output file is created.
 
-    flags : dict (optional)
+    read_flags : dict (optional)
         Dictionary indicating which output files to process. If given, should
         at a minimum have the keys: ['out', 'acc', 'str'], with values being
         bools. If false, this won't process that type of output file.
         Defaults to all being True (make sure the files exist!)
+
+    save_sep : bool (optional)
+        If true, each model will be saved as a separate pickle, with the name
+        of the file being out_path + model_name.pkl (the paremeter out_file
+        is tus ignored). If false, all the results will be saved in a single 
+        pickle file if both out_path and out_file parameters are passed.
         
+    del_txt : bool (optional)
+        If true (and post = true), the text files for QUAD4M analyses will all
+        be deleted. Defaults to false. Note that the files will only be deleted
+        if the model was deemed to finish succcessfully, so that errors can be
+        properly debugged.
+
     Returns
     -------
     outputs : list of dict
@@ -57,58 +169,32 @@ def postprocess_stage(stage_path, out_path = None, out_file = None,
         'eq_props', 'Ts', 'acc_hist', 'str_hist']
         
     '''
-
-    # If no flags were provided, turn all of them on
-    if not read_flags:
-        read_flags = {'out': True, 'acc': True, 'str': True}
     
     # Initialize output list and read-in files to be processed
     outputs = []
     models = sorted([f.replace('.out', '') for f in os.listdir(stage_path)
-                                             if f.endswith('.out')])
+                                                 if f.endswith('.out')])
     N = len(models) # number of models to be processed
 
     # Iterate through the models and process as needed
     for m, model in enumerate(models):
 
-        # Print progress
-        print('Now processing model {:s} ({:d}/{:d}) '.format(model, m, N),
-              flush = True)
-        
-        # Initialize output dictionary and success flags for this model
-        output = {'model': model}
-        success_flags = []
-
-        # Output file 
-        if read_flags['out']:
-            labels = ['peak_str', 'peak_acc', 'eq_props', 'Ts']
-            flag, values = process_out(stage_path, model + '.out')
-            output.update({k : v for k, v in zip(labels, values)} )
-            success_flags += [flag]
-            
-        # Acceleration histories file
-        if read_flags['acc']:
-            flag, values = process_hist(stage_path, model + '.acc')
-            output.update({'acc_hist' : values})
-            success_flags += [flag]
-
-        # Stress histories file
-        if read_flags['str']:
-            flag, values = process_hist(stage_path, model + '.str')
-            output.update({'acc_str' : values})
-            success_flags += [flag]
-
-        # Determine whether the model ran everything correctly
-        if np.all(success_flags):
-            output.update({'run_success': True})
+        if (out_path is not None) & (save_sep):
+            out_file_model = model + '.pkl'
         else:
-            output.update({'run_success': False})
-                  
-        # Add results to output list
+            out_file_model = None
+
+        output = postprocessQ4M(stage_path, model, out_path, out_file_model,
+                   read_flags, del_txt)
+
+        # Add to the output list
         outputs += [output]
 
+        # Report progress
+        print('({:d}/{:d})'.format(m, N), flush = True)
+
     # If required, save output file
-    if (out_path is not None) & (out_file is not None):
+    if (out_path is not None) & (out_file is not None) & (not save_sep):
         llgeo_fls.save_pkl(out_path, out_file, outputs, True)
 
     return outputs

@@ -7,6 +7,7 @@ for a given set of QUAD4M input files.
 '''
 from memory_profiler import memory_usage
 import llgeo.utilities.files as llgeo_fls
+import llgeo.quad4m.post_process as q4m_post
 from threading import Thread
 import subprocess as sub
 import os
@@ -17,8 +18,9 @@ import time
 # Running QUAD4M stages
 # ------------------------------------------------------------------------------
 
-def runQ4M_stages(stages, dir_q4m, nthreads, del_flag = False):
-    ''' his runs a QUAD4M stage ASSUMING A VERY SPECIFIC FILE STRUCTURE
+def runQ4M_stages(stages, dir_q4m, nthreads, del_exist = False, post = False,
+                  del_txt = False):
+    ''' This runs a QUAD4M stage ASSUMING A VERY SPECIFIC FILE STRUCTURE
         
     Purpose
     -------
@@ -53,10 +55,20 @@ def runQ4M_stages(stages, dir_q4m, nthreads, del_flag = False):
         Number of threads to use when running analyses (make sure to leave one
         or two open for the OS)
 
-    del_flag : bool
+    del_exist : bool (optional)
         If true, will delete all output files that already exist in stages
-        subdirectories
-           
+        subdirectories. Defaults to false.
+
+    post : bool (optional)
+        If true, each model will be post-processed as the simulations occurr, 
+        saving a single .pkl file for each model with the analysis results.
+        Defaults to false.
+
+    del_txt : bool (optional)
+        If true (and post = true), the text files for QUAD4M analyses will all
+        be deleted. Defaults to false. Note that the files will only be deleted
+        if the model was deemed to finish succcessfully, so that errors can be
+        properly debugged.
     '''
 
     # Change working directory to where EXE file is saved
@@ -79,11 +91,19 @@ def runQ4M_stages(stages, dir_q4m, nthreads, del_flag = False):
         douts += len(files) * [ stage + '/' ]
     
         # Careful here! Will delete all existing outputs if true
-        if del_flag:
+        if del_exist:
+
+            # Delete standard output files
             llgeo_fls.delete_contents(stage + '/', ['out', 'bug', 'acc', 'str'])
 
+            # Delete pickle outputs
+            outpkls = [f for f in os.listdir(stage + '/')
+                               if f.endswith('_outputs.pkl')]
+            [os.remove(stage + '/' + f) for f in outpkls]
+
     # Run in parallel
-    runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, nthreads)
+    runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, nthreads,
+                     post, del_txt)
 
     # Return back to original working directory
     os.chdir(ini_path)
@@ -210,16 +230,112 @@ def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
     return True
 
 
+def runpostQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out,
+               file_bug, del_txt = False):
+    '''Runs a QUAD4M analysis and immediately post-processes the outputs.
+        
+    Purpose
+    -------
+    This is a wrapper function for "runQ4M" (this module) and "postprocessQ4M"
+    (in "post_process.py" module).
+    
+    When a large amount of models are being run, the large input/output files
+    required for the QUAD4M analyses can take up too much space. To avoid this,
+    one can run the analyses then immediately extract the needed outputs to a
+    python-friendly format, then delete the text files to save memory.  
+
+    IMPORTANT: I ALWAYS ASSUME THAT ALL THE FILES HAVE THE SAME NAME FOR A GIVEN
+    MODEL, AND THAT THE EXTENSION ARE: .q4r, .dat, .shk, .out, .bug, .acc, .str
+    
+    NOTE: See the documentation in the functions "runQ4M" and "postprocessQ4M"
+          for detailed explanation on how these functions work. 
+
+    Parameters
+    ----------
+    dir_q4m : str
+        path containing the file 'Quad4MU.exe'. Note that the current
+        directory will be changed to this location while running this function. 
+    
+    dir_wrk : str
+        path to working directory, where .q4r and .dat files are stored
+         for this simulation. MUST BE relative to dir_q4m.
+    
+    dir_out : str
+        path to output directory, where QUAD4M outputs will be stored.
+        MUST BE relative to dir_q4m.
+    
+    file_q4r : str
+        name of input file, usually with extension ".q4r"
+    
+    file_dat : str
+        name of file with modulus reduction and damping curves, usually with
+        extension ".dat" 
+    
+    file_out : str
+        name of file to store outputs, usually with extension ".out"
+    
+    file_bug : str
+        name of file to store dump from QUAD4M (just progress on itertions), 
+        usually with extension ".bug"
+
+    del_txt : bool (optional)
+        if true, all quad4M input and output files for this analysis will be
+        deleted. Defaults to false. Note that the files will only be deleted
+        if the model was deemed to finish succcessfully, so that errors can be
+        properly debugged.
+
+    Returns
+    -------
+    outputs : dict
+        (Direct output from "postprocessQ4M") 
+        Dictionary of outputs from the model, where the contents depend on the
+        provided flags.
+        If no flags are given, dictionary will include:
+            ['model', 'run_success', 'peak_str', 'peak_acc', 'eq_props', 'Ts',
+            'acc_hist', 'str_hist']
+    '''
+
+    # Run the analysis
+    ran_check = runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out,
+                       file_bug)
+
+    # Post-process (Note that dir_out should always be relative to dir_q4m, 
+    # which is why I combine them when calling this function.)
+    # I ASSUME ALL FILES HAVE THE SAME NAME!!!!!! ¯|_(ツ)_|¯
+    model = file_out.replace('.out', '')
+    if ran_check:
+        output = q4m_post.postprocessQ4M(model_path = dir_q4m + dir_out,
+                                         model_name = model,
+                                         out_path   = dir_q4m + dir_out,
+                                         out_file   = model + '_out.pkl',
+                                         del_txt    = del_txt)
+    else: 
+        output = False
+               
+    # return :)
+    return output
+
+
 # ------------------------------------------------------------------------------
 # Running many QUAD4M files
 # ------------------------------------------------------------------------------
 
-def runQ4Ms_series(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, t = False):
-    '''Given a list of runQ4M inputs, this runs the models in series'''
+def runQ4Ms_series(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs,
+                   t = False, post = False, del_txt = False):
+    '''Given a list of runQ4M inputs, this runs the models in series
+       If t = True, it will print progress
+       If post = True, it will do the post processing along the way
+       if del_txt = True (and post = True), it will delete text files.'''
 
     inputs = zip(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs)
+
     for i, args in enumerate(inputs):
-        _ = runQ4M(*args)
+
+        if post:
+            args += (del_txt, )
+            _ = runpostQ4M(*args)
+        else:
+            _ = runQ4M(*args)
         
         if t:
             print('Thread {:d} processed model: '.format(t) +\
@@ -228,7 +344,8 @@ def runQ4Ms_series(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, t = False):
     return True
 
 
-def runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, nthreads):
+def runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, nthreads,
+                     post = False, del_txt = False):
     ''' Given a list of runQ4M inputs, this runs the models in parallel
 
     Steps:
@@ -251,6 +368,10 @@ def runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, nthreads):
               .                                                 .
               |____ thread m ____ thread m __...__ thread m ____|
                      sim 1            sim 2         sim n
+
+    
+       If post = True, it will do the post processing along the way
+       if del_txt = True (and post = True), it will delete text files.
 
     '''
 
@@ -278,19 +399,24 @@ def runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, nthreads):
         grouped_args +=[{k : v[start:stop] for k, v in zip(arg_keys, arg_vals)}]
 
     # Print starting confirmation
-    print('Starting {:d} Threads to Process {:d} Simulations'.\
+    print('\nStarting {:d} Threads to Process {:d} Simulations'.\
            format(nthreads, len(dq4ms)))
-    print('(~{:d} Simulations per Thread)'.format(q))
+    print('\t(~{:d} Simulations per Thread)'.format(q))
+    if post:
+        print('\tFiles will be post-processed along the way.')
+    if post & del_txt:
+        print('\tText files will be deleted')
+        print('\tA pickle per model will be saved\n')
     
     # Create a thread for each group
     ts = []
     for i, ga in enumerate(grouped_args):
-        print('Thread {:d} will run:'.format(i + 1))
-        print(ga['fq4rs'])
-        ga.update({'t': i + 1})
+        print('\nThread {:d} will run:'.format(i + 1))
+        print([f.replace('.q4r', '') for f in ga['fq4rs']])
+        ga.update({'t': i + 1, 'del_txt': del_txt, 'post': post})
         t = Thread(target = runQ4Ms_series, kwargs = ga)
         ts.append(t)
-    
+
     # Run and time :)
     start = time.time()
     [t.start() for t in ts]
