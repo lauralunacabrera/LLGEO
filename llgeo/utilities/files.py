@@ -24,6 +24,9 @@ def read_pkl(in_path, in_file):
 def save_pkl(out_path, out_file, contents, flag_save):
     ''' very simple wrapper for saving pickle files '''
 
+    if not os.path.exists(out_path):
+        os.mkdir(out_path)
+
     if flag_save:
         handler = open(out_path + out_file, 'wb')
         pkl.dump(contents, handler)
