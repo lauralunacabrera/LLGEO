@@ -139,6 +139,8 @@ def plot_mesh_elem_prop(elems, nodes, prop, units, fig, ax,
         cb.outline.set_visible(False)
         cb.ax.tick_params(labelsize = 7, width = 0.1)
         cb.set_label(prop + ' (' + units + ')', fontsize = 7)
+    else:
+        cax = None
     
     # Plotting options
     ax.set_xbound(lower = np.min(nodes['x']), upper = np.max(nodes['x']))
