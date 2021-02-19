@@ -21,7 +21,7 @@
 	"settings":
 	{	
 		// Python
-		"python.pythonPath": "../.venv/bin/python3",
+		"python.pythonPath": "/home/laura/code/LLGEO/.venv/bin/python3",
 		"python.analysis.disabled": ["unresolved-import"],
 		
 		// Explorer
