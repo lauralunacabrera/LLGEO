@@ -107,121 +107,142 @@ def elem_stresses(nodes, elems, k = 0.5, unit_w = 21000):
     return(elems)
 
 
-def map_vs_powerfit(nodes, elems, pfits, add_G, unit_fix, unit_w = 21000):
-    ''' Maps powerfits of shear wave velocity to elems. pfits shoudl be a list
-    of dict with const and power. List order should correspond to 'lay' in elems
-    If add_G = True, will also add a column to elems where G = Gmax 
-    If unit_fix = True, will divide Gmax (and G) by 1000 since QUAD4M works in 
-        those units
-    '''
+def add_vs(nodes, elems, pfits, U_rf = None, cov = False,
+           unit_fix = True, unit_w = 21000):
+  ''' Adds shear-wave velocity based on power-fits and possible random field.
+      
+  Purpose
+  -------
+  Given the geometry information of the QUAD4M analysis (nodes and elems), this
+  function adds Vs based on the following:
+    1) pfits: which provides the best-fit relationship between depth and vs,
+              possibly as a function of layering.
+    2) U_rf:  a STANDARD UNIFORM random field to add a randomness component.
+      
+  Parameters
+  ----------
+  nodes : pandas dataframe
+      Contains information for elements, usually created by 'geometry.py'
+      At a *minumum*, must have columns: [node_i]
 
-    # If there isn't already a unit_w in elems dataframe, then choose a uniform
-    # one for all (if none provided, defaults to 21000 N/m3)
-    if 'unit_w' not in list(elems):
-        elems['unit_w'] = unit_w * np.ones(len(elems))
+  elems : pandas DataFrame
+      Contains information for elements, usually created by 'geometry.py'
+      At a *minumum*, must have columns: [i, xc, yc, layer]
 
-    # Get the top of each node column (goes left to right)
-    top_ys_nodes = [col['y'].max() for _, col in nodes.groupby('node_i')]
+  pfits : list of dict
+      Each elements correspond to a powefit between depth and vs specific to a
+      given soil layer.
+      
+      The number of elements in this list must be equal to the unique number of
+      layers specified in elems['layer'], where these will be mapped as:
+          layer number = (index of pfits + 1) since layer number is assumed to
+          be 1-indexed but python is 0-indexed. 
+      
+      Each dict must, at a minimum, have the keys: 'power', 'const' and 'plus',
+      with this function assuming a form: vs = plust + const * depth ** power.
 
-    # Get top of each element col (average of top left and top right nodes)
-    # (moving average of top_ys_nodes with window of 2; see shorturl.at/iwFLY)
-    top_ys_elems = np.convolve(top_ys_nodes, [0.5, 0.5], 'valid')
+  U_rf : bool or numpy array (optional)
+      If provided, this must be a STANDARD UNIFORM RANDOM FIELD to introduce
+      randomness in the shear wave velocity measurements. Defaults to None,
+      so that no randomness is added to the estimated shear wave velocity.
 
-    # Iterate through element soil columns (goes left to right)
-    elems['vs'] = np.empty(len(elems)) 
-    elems['Gmax'] = np.empty(len(elems))
-    elems['depth'] = np.empty(len(elems))
+  cov : bool or float (optional)
+      If provided, this is a single value representing coefficient of variation
+      to be used (will only be used if an U_rf is also provided.). If one is not
+      provided yet U_rf is provided, then a column 'cov' must exist in elems
+      (this is done so that cov may change spatially, if desired).
 
-    for (i, soil_col), y_top in zip(elems.groupby('i'), top_ys_elems):
+  unit_fix : bool
+      If true, Gmax will be divided by 1,000 since QUAD4M works in those units
 
-        # Get array of y-coords at center of element and unit weights
-        # Note that in elems dataframe, elements are ordered from the bot to top
-        # Here I flip the order so that its easier for stress calc (top down)  
-        ys = soil_col['yc'].values
-        gs = soil_col['unit_w'].values
-        ds = y_top - ys
+  unit_w : optional
+      If elems does not already have a 'unit_w' column, then a single value
+      "unit_w" will be used for all the elements. Defaults to 21,000 N/m3.
+      
+  Returns
+  -------
+  elems : dataframe
+      Returns same dataframe but with "Vs_mean" column added.
+  '''
 
-        # Determine power and constant as function of depth (based on layer)
-        layers = soil_col['layer'].values
-        powers = [pfits[int(L)]['power'] for L in layers]
-        consts = [pfits[int(L)]['const'] for L in layers]
-        pluss  = [pfits[int(L)]['plus']  for L in layers]
+  # If there isn't already a unit_w in elems dataframe, then choose a uniform
+  # one for all (if none provided, defaults to 21000 N/m3)
+  if 'unit_w' not in list(elems):
+      elems['unit_w'] = unit_w * np.ones(len(elems))
+
+  # Get the top of each node column (goes left to right)
+  top_ys_nodes = [col['y'].max() for _, col in nodes.groupby('node_i')]
+
+  # Get top of each element col (average of top left and top right nodes)
+  # (moving average of top_ys_nodes with window of 2; see shorturl.at/iwFLY)
+  top_ys_elems = np.convolve(top_ys_nodes, [0.5, 0.5], 'valid')
+
+  # Add required columns if there is randomness
+  if U_rf is not None:
+    elems = map_rf(elems, 'rand_U', U_rf)
+    elems['vs_mean'] = np.empty(len(elems)) 
+    elems['vs_rand'] = np.empty(len(elems))
+
+  # If a single coefficient of variation is provided, add it to elems
+  if cov:
+    elems['cov'] = cov * np.ones(len(elems))
+
+  # Raise error if rf is given, no cov is given, and/or does not exist in elems
+  if (U_rf is not None) & (not cov) & ('cov' not in list(elems)):
+    raise Exception('If cov is provided, a cov column must exist in elems.')
+
+  # Iterate through element soil columns (goes left to right)
+  elems['vs'] = np.empty(len(elems)) 
+  elems['Gmax'] = np.empty(len(elems))
+  elems['depth'] = np.empty(len(elems))
+
+  for (i, soil_col), y_top in zip(elems.groupby('i'), top_ys_elems):
+    
+    # Get array of y-coords at center of element and unit weights
+    # Note that in elems dataframe, elements are ordered from the bot to top
+    # Here I flip the order so that its easier for stress calc (top down)  
+    ys = soil_col['yc'].values
+    gs = soil_col['unit_w'].values
+    ds = y_top - ys
+
+    # Determine power and constant as function of depth (based on layer)
+    layers = soil_col['layer'].values
+    powers = [pfits[int(L)]['power'] for L in layers]
+    consts = [pfits[int(L)]['const'] for L in layers]
+    pluss  = [pfits[int(L)]['plus']  for L in layers]
         
-        # Calculate vs and Gmax
-        vs = np.array([c*d**power+plus for c, d, power, plus in
-                       zip(consts, ds, powers, pluss)])
-        Gm = (gs/9.81) * (vs**2)
+    # Calculate vs and Gmax
+    vs_mean = np.array([c*d**power+plus for c, d, power, plus in
+                        zip(consts, ds, powers, pluss)])
 
-        # Export results
-        elems.loc[elems['i'] == i, 'vs']    = vs
-        elems.loc[elems['i'] == i, 'Gmax']  = Gm
-        elems.loc[elems['i'] == i, 'depth'] = ds
+    # If there is no randomness, add results
+    elems.loc[elems['i'] == i, 'depth'] = ds
     
-    # Fix units if necessary
-    if unit_fix:
-      elems['Gmax'] = elems['Gmax'] / 1000
-    
-    # Add new column "G" if necessary
-    if add_G:
-      elems['G'] = elems['Gmax']
+    # If there is no randomness, just add vs_mean and Gmax
+    if U_rf is None:
+      Gm = (gs/9.81) * (vs_mean**2)
 
-    return elems
+      # Export results
+      elems.loc[elems['i'] == i, 'vs']    = vs_mean
+      elems.loc[elems['i'] == i, 'Gmax']  = Gm
 
+    # Otherise, add the randomness here
+    else:
+      # Get the random component and the final one, then calc Gmax
+      vs_rand  = (soil_col['rand_U'].values) * vs_mean * (soil_col['cov'].values)
+      vs_final = vs_mean + vs_rand 
+      Gm = (gs/9.81) * (vs_final**2)
 
-def map_rf(elems, prop, z):
-  ''' map random field to elems dataframe.
-    
-    Purpose
-    -------
-    Given a table of elems, this function adds a column called "props" and maps
-    the values in the array "z" to the appropriate elements.
-    
-    Parameters
-    ----------
-    elems : pandas DataFrame
-        Contains information for elements, usually created by 'geometry.py'
-        At a *minumum*, must have columns: [elem_n, elem_i, elem_j].
-        IMPORTANT! Element numbering i and j must agree with z convention below.
+      # Export results
+      elems.loc[elems['i'] == i, 'vs_mean'] = vs_mean
+      elems.loc[elems['i'] == i, 'vs_rand'] = vs_rand
+      elems.loc[elems['i'] == i, 'vs']      = vs_final
+      elems.loc[elems['i'] == i, 'Gmax']    = Gm
 
-    prop : str
-        name of the property being added to elems, used as column header.
-        
-    z : numpy array
-        random field realization (generally created by randfields package)
-        it is assumed that indexing in this array is of size n1xn2 if 2D. 
-        Indexing is as follows:
-          Z(1,1) is the lower left cell.
-          Z(2,1) is the next cell in the X direction (to right).
-          Z(1,2) is the next cell in the Y direction (upwards).
-
-    Returns
-    -------
-    elems : pandas DataFrame
-        Returns elems DataFrame that was provided, with added columns 
-        for the desired property.
-        
-    Notes
-    -----
-    * Take extreme care that the indexing of elems i and j is consistent with 
-      the indexing in the z array. That is:
-        i starts left and moves rightwards
-        j starts down and move upwards
-    * Note that Z is assumed to be equispaced, which might not be true of the
-      elements. Up to you to check.
-    *   
-    '''
+  # Fix units if necessary
+  if unit_fix:
+    elems['Gmax'] = elems['Gmax'] / 1000
   
-  # Do some basic error checking
-  err_check = map_rf_check_inputs(elems, prop, z)
-
-  if len(err_check) > 0:
-    mssg = [err + '\n' for err in err_check]
-    raise Exception(mssg)
-
-  # Mapping
-  mapped_z = [z[i-1, j-1] for i, j in zip(elems['i'], elems['j'])] 
-  elems[prop] = mapped_z
-
   return elems
 
 
@@ -641,13 +662,68 @@ def get_mask(locations, elems):
   return(all_locations_mask)
 
 
+def map_rf(elems, prop, z):
+  ''' Maps a random field array (generated by simLAS) to elems dataframe.
+    
+    Purpose
+    -------
+    Given a table of elems, this function adds a column called "props" and maps
+    the values in the array "z" to the appropriate elements.
+    
+    Parameters
+    ----------
+    elems : pandas DataFrame
+        Contains information for elements, usually created by 'geometry.py'
+        At a *minumum*, must have columns: [elem_n, elem_i, elem_j].
+        IMPORTANT! Element numbering i and j must agree with z convention below.
+
+    prop : str
+        name of the property being added to elems, used as column header.
+        
+    z : numpy array
+        random field realization (generally created by randfields package)
+        it is assumed that indexing in this array is of size n1xn2 if 2D. 
+        Indexing is as follows:
+          Z(1,1) is the lower left cell.
+          Z(2,1) is the next cell in the X direction (to right).
+          Z(1,2) is the next cell in the Y direction (upwards).
+
+    Returns
+    -------
+    elems : pandas DataFrame
+        Returns elems DataFrame that was provided, with added columns 
+        for the desired property.
+        
+    Notes
+    -----
+    * Take extreme care that the indexing of elems i and j is consistent with 
+      the indexing in the z array. That is:
+        i starts left and moves rightwards
+        j starts down and move upwards
+    * Note that Z is assumed to be equispaced, which might not be true of the
+      elements. Up to you to check.
+    *   
+    '''
+  
+  # Do some basic error checking
+  err_check = map_rf_check_inputs(elems, prop, z)
+
+  if len(err_check) > 0:
+    raise Exception('\n'.join(err_check))
+
+  # Mapping
+  mapped_z = [z[i-1, j-1] for i, j in zip(elems['i'], elems['j'])] 
+  elems[prop] = mapped_z
+
+  return elems
+
+
 def map_rf_check_inputs(elems, prop, z):
   ''' Does some really basic error checking for the inputs to map_rf '''
 
   # Some (really) basic error checking
   errors = {1: 'Missing i or j in elemes table. Please add.' ,
-            2: 'Random field and q4m mesh do not have same num of is and js.',
-            3: 'Property name already exists in elems. Please change.'}
+            2: 'Random field and q4m mesh do not have same num of is and js.'}
 
   # Check that elems i and j exists, and that the random field is large enough
   err_flags = []
@@ -660,11 +736,8 @@ def map_rf_check_inputs(elems, prop, z):
     if (max_i != np.shape(z)[0]) or (max_j != np.shape(z)[1]):
       err_flags += [2]
 
-  # Make sure that new property doesn't already exist in elems
-  if prop in list(elems):
-    err_flags += [3]
-
   # Print out errors
   err_out = [errors[f] for f in err_flags]
   return err_out
+
 
