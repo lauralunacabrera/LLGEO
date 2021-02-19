@@ -109,7 +109,7 @@ def postprocessQ4M(model_path, model_name, out_path = None, out_file = None,
     extensions = ['.q4r', '.dat', '.shk', '.out', '.acc', '.str', '.bug']
     [os.remove(model_path + model_name + e) for e in extensions 
         if (del_txt) & # Delete if del_txt flag is True, AND
-           (output['run_success']) & # if the model ran successfully, ABD
+           (output['run_success']) & # if the model ran successfully, AND
            (os.path.exists(model_path + model_name + e))] # if the file exists
     
     return output
