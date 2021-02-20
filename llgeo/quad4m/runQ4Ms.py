@@ -231,7 +231,7 @@ def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
 
 
 def runpostQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out,
-               file_bug, del_txt = False):
+               file_bug, del_txt = False, read_flags = {}):
     '''Runs a QUAD4M analysis and immediately post-processes the outputs.
         
     Purpose
@@ -308,7 +308,8 @@ def runpostQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out,
                                          model_name = model,
                                          out_path   = dir_q4m + dir_out,
                                          out_file   = model + '_out.pkl',
-                                         del_txt    = del_txt)
+                                         del_txt    = del_txt,
+                                         read_flags = read_flags)
     else: 
         output = False
                
@@ -321,7 +322,7 @@ def runpostQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out,
 # ------------------------------------------------------------------------------
 
 def runQ4Ms_series(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs,
-                   t = False, post = False, del_txt = False):
+                   t = False, post = False, del_txt = False, read_flags={}):
     '''Given a list of runQ4M inputs, this runs the models in series
        If t = True, it will print progress
        If post = True, it will do the post processing along the way
@@ -332,7 +333,7 @@ def runQ4Ms_series(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs,
     for i, args in enumerate(inputs):
 
         if post:
-            args += (del_txt, )
+            args += (del_txt, read_flags)
             _ = runpostQ4M(*args)
         else:
             _ = runQ4M(*args)
@@ -345,7 +346,7 @@ def runQ4Ms_series(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs,
 
 
 def runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, nthreads,
-                     post = False, del_txt = False):
+                     post = False, del_txt = False, read_flags = {}):
     ''' Given a list of runQ4M inputs, this runs the models in parallel
 
     Steps:
@@ -413,7 +414,8 @@ def runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, nthreads,
     for i, ga in enumerate(grouped_args):
         print('\nThread {:d} will run:'.format(i + 1))
         print([f.replace('.q4r', '') for f in ga['fq4rs']])
-        ga.update({'t': i + 1, 'del_txt': del_txt, 'post': post})
+        ga.update({'t': i + 1, 'del_txt': del_txt, 'post': post,
+                   'read_flags':read_flags})
         t = Thread(target = runQ4Ms_series, kwargs = ga)
         ts.append(t)
 
