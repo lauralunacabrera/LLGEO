@@ -7,18 +7,23 @@ how to do this stuff now.
 Need to look into these resources:
 https://www.earthdatascience.org/
 
+EPGS Explanation:
+https://en.wikipedia.org/wiki/EPSG_Geodetic_Parameter_Dataset
+
 '''
+
 import pyproj as proj
 
 # ------------------------------------------------------------------------------
 # Main Functions
 # ------------------------------------------------------------------------------
-def transform_epsg_xy(cfrom, cto, old_x, old_y):
-    ''' Transforms x and y coordinates (numpy arrays) to a different epsg.
+def epgs_transform(cfrom, cto, old_x, old_y):
+    ''' Transforms coordinates (numpy arrays) to a different coordinate system.
 
     Commonly used:
-        26710 = NAD27 UTM Zone 10N (https://tinyurl.com/3lrb9pva)
-        32610 = WGS84 UTM Zone 10N (https://tinyurl.com/gdh8zfvy)
+        4326  = WGS84 Lat and Long (https://tinyurl.com/3hcylf25) - Everywhere
+        26710 = NAD27 UTM Zone 10N (https://tinyurl.com/3lrb9pva) - Vancouver
+        32610 = WGS84 UTM Zone 10N (https://tinyurl.com/gdh8zfvy) - Vancouver
     
     TODO - properly document this!
     '''
@@ -34,6 +39,7 @@ def transform_epsg_xy(cfrom, cto, old_x, old_y):
     new_x, new_y = transformer.transform(old_x, old_y)
     
     return new_x, new_y
+
 
 # ------------------------------------------------------------------------------
 # Helper Functions
