@@ -116,7 +116,8 @@ def postprocessQ4M(model_path, model_name, out_path = None, out_file = None,
 
 
 def postprocess_stage(stage_path, out_path = None, out_file = None,
-                      read_flags = None, save_sep = False, del_txt = False):
+                      read_flags = None, save_sep = False, del_txt = False,
+                      track_out = True):
     ''' Post-processes all QUAD4M models within a stage.
         
     Purpose
@@ -168,6 +169,8 @@ def postprocess_stage(stage_path, out_path = None, out_file = None,
         'peak_str', 'peak_acc',
         'eq_props', 'Ts', 'acc_hist', 'str_hist']
         
+    TODO-ASAP - update this documentation
+
     '''
     
     # Initialize output list and read-in files to be processed
@@ -188,7 +191,8 @@ def postprocess_stage(stage_path, out_path = None, out_file = None,
                    read_flags, del_txt)
 
         # Add to the output list
-        outputs += [output]
+        if track_out:
+            outputs += [output]
 
         # Report progress
         print('({:d}/{:d})'.format(m, N), flush = True)
