@@ -107,8 +107,8 @@ def elem_stresses(nodes, elems, k = 0.5, unit_w = 21000):
     return(elems)
 
 
-def add_vs(nodes, elems, pfits, U_rf = None, cov = False,
-           unit_fix = True, unit_w = 21000):
+def add_vs(nodes, elems, pfits, U_rf = None, sigma = False,
+           unit_fix = True, unit_w = 21000, dist = 'norm'):
   ''' Adds shear-wave velocity based on power-fits and possible random field.
       
   Purpose
@@ -130,7 +130,7 @@ def add_vs(nodes, elems, pfits, U_rf = None, cov = False,
       At a *minumum*, must have columns: [i, xc, yc, layer]
 
   pfits : list of dict
-      Each elements correspond to a powefit between depth and vs specific to a
+      Each elements correspond to a powerfit between depth and vs specific to a
       given soil layer.
       
       The number of elements in this list must be equal to the unique number of
@@ -146,19 +146,23 @@ def add_vs(nodes, elems, pfits, U_rf = None, cov = False,
       randomness in the shear wave velocity measurements. Defaults to None,
       so that no randomness is added to the estimated shear wave velocity.
 
-  cov : bool or float (optional)
-      If provided, this is a single value representing coefficient of variation
-      to be used (will only be used if an U_rf is also provided.). If one is not
-      provided yet U_rf is provided, then a column 'cov' must exist in elems
-      (this is done so that cov may change spatially, if desired).
+  sigma : bool or float (optional)
+      If provided, this is a single value representing the standard deviation
+      to be used for the random field (will only be used if an U_rf is also 
+      provided.). If one is not provided yet U_rf is provided, then a column 
+      'sigma' must exist in elems (this is done so that it may change spatially
+      if desired).
 
   unit_fix : bool
       If true, Gmax will be divided by 1,000 since QUAD4M works in those units
 
-  unit_w : optional
+  unit_w : float (optional)
       If elems does not already have a 'unit_w' column, then a single value
       "unit_w" will be used for all the elements. Defaults to 21,000 N/m3.
       
+  dist : str (optional)
+      Type of distribution: normal or lognormal (defaults to normal)
+
   Returns
   -------
   elems : dataframe
@@ -184,12 +188,14 @@ def add_vs(nodes, elems, pfits, U_rf = None, cov = False,
     elems['vs_rand'] = np.empty(len(elems))
 
   # If a single coefficient of variation is provided, add it to elems
-  if cov:
-    elems['cov'] = cov * np.ones(len(elems))
+  if sigma:
+    elems['sigma'] = sigma * np.ones(len(elems))
 
   # Raise error if rf is given, no cov is given, and/or does not exist in elems
-  if (U_rf is not None) & (not cov) & ('cov' not in list(elems)):
-    raise Exception('If cov is provided, a cov column must exist in elems.')
+  if (U_rf is not None) & (not sigma) & ('sigma' not in list(elems)):
+    msg = 'If U_rf is provided and sigma is not, a "sigma" column must '
+    msg+= 'exist in elems.'
+    raise Exception(msg)
 
   # Iterate through element soil columns (goes left to right)
   elems['vs'] = np.empty(len(elems)) 
@@ -229,9 +235,16 @@ def add_vs(nodes, elems, pfits, U_rf = None, cov = False,
     # Otherise, add the randomness here
     else:
       # Get the random component and the final one, then calc Gmax
-      vs_rand  = (soil_col['rand_U'].values) * vs_mean * (soil_col['cov'].values)
-      vs_final = vs_mean + vs_rand 
-      Gm = (gs/9.81) * (vs_final**2)
+      if dist == 'lognorm':
+        vs_rand  = np.exp((soil_col['rand_U'].values) *
+                          (soil_col['sigma'].values))
+      elif dist == 'norm':
+        vs_rand  = (soil_col['rand_U'].values) * (soil_col['sigma'].values)
+      else:
+        raise Exception('dist not recognized')
+
+      vs_final = vs_mean + vs_rand
+      Gm = (gs / 9.81) * (vs_final ** 2)
 
       # Export results
       elems.loc[elems['i'] == i, 'vs_mean'] = vs_mean
