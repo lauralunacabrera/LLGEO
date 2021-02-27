@@ -116,14 +116,16 @@ def dist_profile(depth, values, dist = 'norm', intv = 1, min_pts = 10,
     bin_numbers = np.empty(len(depth))
 
     # Initalize columns for outputs (and check dist is a match)
+    cols = ['num_pts']
     if dist == 'norm':
-        cols = ['mean', 'stdv']
+        cols += ['norm_mean', 'norm_stdv']
     elif dist == 'lognorm':
-        cols = ['mean_x', 'stdv_x', 'mean_lnx', 'stdv_lnx']
+        cols += ['avg', 'lognorm_mean', 'lognorm_stdv', 
+                'lognorm_mean_lnx', 'lognorm_stdv_lnx']
     else:
         raise Exception('dist not recognized. Change to "norm" or "lognorm"')
 
-    cols += ['perc_{:d}'.format(int((100*p))) for p in perc]
+    cols += [dist + '_perc_{:d}'.format(int((100*p))) for p in perc]
     results = np.empty((len(profile), len(cols)))
 
     # Iterate through profile
@@ -132,27 +134,28 @@ def dist_profile(depth, values, dist = 'norm', intv = 1, min_pts = 10,
         
         # Interval mask: determine which values are in this interval
         imask = (depth >= row['from']) & (depth < row['to'])
+        results[i, 0] = np.sum(imask)
        
         # If there are not enough points, return NaN row
         if sum(imask) < min_pts:
-            results[i, :] = len(cols) * [np.nan]
+            results[i, 1:] = ( len(cols) - 1 ) * [np.nan]
             
         # Normal distribution fit
         elif dist == 'norm':
             kwargs = {'loc': guess_mean, 'scale': guess_stdv}
             mean_x, stdv_x = stats.norm.fit(values[imask], **kwargs)
             ppf = stats.norm.ppf(perc, loc = mean_x, scale = stdv_x)
-            results[i, :] = np.append(np.array([mean_x, stdv_x]), ppf)
+            results[i, 1:] = np.append(np.array([mean_x, stdv_x]), ppf)
                     
         # Lognormal distribution fit
         elif dist == 'lognorm':
-            kwargs = {'floc':0, 'scale':np.exp(guess_mean)}
-            stdv_lnx, _, scale = stats.lognorm.fit(values[imask], **kwargs)
-            ppf = stats.lognorm.ppf(perc, s = stdv_lnx, scale = scale)
-            mean_lnx = np.log(scale)
+            kwargs = {'floc':0, 'scale' : np.exp(guess_mean)}
+            mean_lnx, stdv_lnx = lognorm_MLE(values[imask])
+            ppf = stats.lognorm.ppf(perc, s = stdv_lnx, scale = np.exp(mean_lnx))
             mean_x,stdv_x = lognorm_to_norm(mean_lnx, stdv_lnx)
-            results[i, :] = np.append(np.array([mean_x, stdv_x,
-                                                mean_lnx, stdv_lnx]), ppf) 
+            average = np.average(values[imask]) # for comparison to mean_x
+            results[i, 1:] = np.append(np.array([average, mean_x, stdv_x,
+                                                mean_lnx, stdv_lnx]), ppf)
 
         # Determine bin number
         if sum(imask) < min_pts:
@@ -165,8 +168,13 @@ def dist_profile(depth, values, dist = 'norm', intv = 1, min_pts = 10,
     
     # Add results to profile dataframe (final output)
     profile.loc[:, cols] = results
-    profile['COV'] = profile['stdv_x'] / profile['mean_x']
-    
+
+    # Add covariance
+    if dist == 'norm':
+        profile['norm_cov'] = profile['norm_stdv'] / profile['norm_mean']
+    elif dist == 'lognorm':
+        profile['lognorm_cov'] = profile['lognorm_stdv'] / profile['lognorm_mean']
+
     return profile, bin_numbers
 
     
@@ -186,6 +194,23 @@ def lognorm_MLE(x):
     var_lnx = sum(squared)/(len(squared)-0)
     stdv_lnx = var_lnx ** .5
     return(mean_lnx,stdv_lnx)
+
+
+def norm_pdf(x, mean, stdv):
+    ''' Returns normal PDF over x given lognorm parameters
+    TODO - test this '''
+
+    pdf = stats.norm.pdf(x, mean, stdv)
+    return pdf
+
+
+def lognorm_pdf(x, mean, stdv, logparams = False):
+    ''' Returns lognormal PDF over x given lognorm parameters
+    TODO - test this'''
+
+    args = lognorm_args(mean, stdv, logparams)
+    pdf = stats.lognorm.pdf(x, **args)
+    return pdf
 
 
 def py_lognorm_MLE(x):
@@ -208,6 +233,7 @@ def lognorm_to_norm(mean_lnx,stdv_lnx):
     stdv_x = var_x**.5
     return(mean_x,stdv_x)
 
+
 def norm_to_lognorm(mean_x, stdv_x):
     ''' Transforms estimators to lognormal estimators '''
 
@@ -216,6 +242,7 @@ def norm_to_lognorm(mean_x, stdv_x):
     mean_lnx = np.log(mean_x)-0.5*var_lnx
     stdv_lnx = var_lnx**.5
     return mean_lnx, stdv_lnx
+
 
 def get_all_fits(data):
     '''Gets lognormal fit for data (numpy array) using all methods,
@@ -235,6 +262,7 @@ def get_all_fits(data):
     fits_dict = {col: [val] for (col,val) in zip(cols,fits)}
     fits_df = pd.DataFrame.from_dict(fits_dict)
     return(fits_df)
+
 
 def lognorm_args(mean_lnx, stdv_lnx, logparams = True):
     ''' Returns arguments to pass to scipy's lognorm function the traditional
