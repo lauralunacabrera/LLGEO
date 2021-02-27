@@ -224,7 +224,7 @@ def corr_fun_nonequisp(sep_dist, corr_coeff, intv, min_pts):
 # Functions for Many Processes
 # ------------------------------------------------------------------------------
 
-def many_corr_fun_nonequisp(df, xcol, ycol, icol, fun_opts = {}):
+def many_corr_fun_nonequisp(df, xcol, ycol, icol, logT = False, fun_opts = {}):
     ''' Estim. of correl. coeffs. and funct. for *many* nonequispaced processes
         
     Purpose
@@ -261,6 +261,11 @@ def many_corr_fun_nonequisp(df, xcol, ycol, icol, fun_opts = {}):
     icol : str
         Name of the column in df that corresponds to the name (or identifier) of
         the test (for example: cpt_name where values are SCPT19-01, etc..)
+
+    logT : bool (optional)
+        Whether to transform the ycol variable into logarithmic scale (this
+        should be used when the underlying assumption is a lognormally 
+        distributed random variable).
 
     func_opts : dict (optional)
         Contains keyword arguments to be passed to "corr_fun_nonequisp", which
@@ -300,9 +305,13 @@ def many_corr_fun_nonequisp(df, xcol, ycol, icol, fun_opts = {}):
     # Iterate through grouped dataframes
     for id, data in df.groupby(icol):
 
+        # Get values (transform to logarithmic scale if needed)
+        yvals = data[ycol].values.astype(float)
+        if logT: yvals = np.log(yvals)
+
         # Get correlation coefficients
         kwargs = {'x' : data[xcol].values.astype(float),
-                  'y' : data[ycol].values.astype(float) }       
+                  'y' : yvals} 
         dist_array, coeff_array = corr_coeffs_1D(**kwargs)
 
         # Summarize correlation coefficient results in dataframe
