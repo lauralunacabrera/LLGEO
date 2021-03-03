@@ -117,7 +117,7 @@ def plot_mesh_elem_prop(elems, nodes, prop, units, fig, ax,
         mesh_kwargs.update({'facecolors' : facecolors})
     
     else:
-        mesh_kwargs.update({'array' : vals, 'edgecolor': 'k', 'linewidth':0.02})
+        mesh_kwargs.update({'array' : vals, 'edgecolor': 'k', 'linewidth':0.005})
 
  
     ax, pc = plot_mesh(verts, verts_elems, ax, mesh_kwargs)
