@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Import LLGEO modules
-import llgeo.randfields.LAS as LAS
+import llgeo.rand_fields.LAS as LAS
 
 #%% Example of a 2D Random Field
 
