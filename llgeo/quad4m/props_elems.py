@@ -107,8 +107,8 @@ def elem_stresses(nodes, elems, k = 0.5, unit_w = 21000):
     return(elems)
 
 
-def add_vs(nodes, elems, pfits, U_rf = None, sigma = False,
-           unit_fix = True, unit_w = 21000, dist = 'norm'):
+def add_vs_pfit(nodes, elems, pfits, rf = None, rf_type = 'ratio', 
+                unit_fix = True, unit_w = 21000):
   ''' Adds shear-wave velocity based on power-fits and possible random field.
       
   Purpose
@@ -117,7 +117,7 @@ def add_vs(nodes, elems, pfits, U_rf = None, sigma = False,
   function adds Vs based on the following:
     1) pfits: which provides the best-fit relationship between depth and vs,
               possibly as a function of layering.
-    2) U_rf:  a STANDARD UNIFORM random field to add a randomness component.
+    2) rf:    a random field of residuals to add randomness to Vs.
       
   Parameters
   ----------
@@ -141,17 +141,17 @@ def add_vs(nodes, elems, pfits, U_rf = None, sigma = False,
       Each dict must, at a minimum, have the keys: 'power', 'const' and 'plus',
       with this function assuming a form: vs = plust + const * depth ** power.
 
-  U_rf : bool or numpy array (optional)
-      If provided, this must be a STANDARD UNIFORM RANDOM FIELD to introduce
-      randomness in the shear wave velocity measurements. Defaults to None,
-      so that no randomness is added to the estimated shear wave velocity.
+  rf : bool or numpy array (optional)
+      If provided, this must be a random field to introduce randomness
+      in the shear wave velocity measurements. Defaults to None,
+      so that no randomness is added to the estimated shear wave velocity. Must
+      be random fields of residuals around shear wave pfit (see rf_type).
 
-  sigma : bool or float (optional)
-      If provided, this is a single value representing the standard deviation
-      to be used for the random field (will only be used if an U_rf is also 
-      provided.). If one is not provided yet U_rf is provided, then a column 
-      'sigma' must exist in elems (this is done so that it may change spatially
-      if desired).
+  rf_type : str (optional)
+      rf here is assumed to be a random field of residuals that are based on
+      the powerfit relationship. They can be of two types:
+          'ratio' : Y = measured / estimated and typ. lognormally distributed
+          'subs'  : R = measured - estimated and typ.  normally   distributed
 
   unit_fix : bool
       If true, Gmax will be divided by 1,000 since QUAD4M works in those units
@@ -159,9 +159,6 @@ def add_vs(nodes, elems, pfits, U_rf = None, sigma = False,
   unit_w : float (optional)
       If elems does not already have a 'unit_w' column, then a single value
       "unit_w" will be used for all the elements. Defaults to 21,000 N/m3.
-      
-  dist : str (optional)
-      Type of distribution: normal or lognormal (defaults to normal)
 
   Returns
   -------
@@ -182,20 +179,10 @@ def add_vs(nodes, elems, pfits, U_rf = None, sigma = False,
   top_ys_elems = np.convolve(top_ys_nodes, [0.5, 0.5], 'valid')
 
   # Add required columns if there is randomness
-  if U_rf is not None:
-    elems = map_rf(elems, 'rand_U', U_rf)
+  if rf is not None:
+    elems = map_rf(elems, 'rf', rf)
     elems['vs_mean'] = np.empty(len(elems)) 
     elems['vs_rand'] = np.empty(len(elems))
-
-  # If a single coefficient of variation is provided, add it to elems
-  if sigma:
-    elems['sigma'] = sigma * np.ones(len(elems))
-
-  # Raise error if rf is given, no cov is given, and/or does not exist in elems
-  if (U_rf is not None) & (not sigma) & ('sigma' not in list(elems)):
-    msg = 'If U_rf is provided and sigma is not, a "sigma" column must '
-    msg+= 'exist in elems.'
-    raise Exception(msg)
 
   # Iterate through element soil columns (goes left to right)
   elems['vs'] = np.empty(len(elems)) 
@@ -218,14 +205,14 @@ def add_vs(nodes, elems, pfits, U_rf = None, sigma = False,
     pluss  = [pfits[int(L)]['plus']  for L in layers]
         
     # Calculate vs and Gmax
-    vs_mean = np.array([c*d**power+plus for c, d, power, plus in
+    vs_mean = np.array([c * d**power + plus for c, d, power, plus in
                         zip(consts, ds, powers, pluss)])
 
     # If there is no randomness, add results
     elems.loc[elems['i'] == i, 'depth'] = ds
     
     # If there is no randomness, just add vs_mean and Gmax
-    if U_rf is None:
+    if rf is None:
       Gm = (gs/9.81) * (vs_mean**2)
 
       # Export results
@@ -233,15 +220,16 @@ def add_vs(nodes, elems, pfits, U_rf = None, sigma = False,
       elems.loc[elems['i'] == i, 'Gmax']  = Gm
 
     # Otherise, add the randomness here
-    else:
+    else:      
       # Get the random component and the final one, then calc Gmax
-      if dist == 'lognorm':
-        vs_rand  = np.exp((soil_col['rand_U'].values) *
-                          (soil_col['sigma'].values))
-      elif dist == 'norm':
-        vs_rand  = (soil_col['rand_U'].values) * (soil_col['sigma'].values)
+      if rf_type == 'ratio':
+        vs_rand  = soil_col['rf'].values * vs_mean
+
+      elif rf_type == 'norm':
+        vs_rand  = soil_col['rf'].values + vs_mean
+      
       else:
-        raise Exception('dist not recognized')
+        raise Exception('rf_type not recognized')
 
       vs_final = vs_mean + vs_rand
       Gm = (gs / 9.81) * (vs_final ** 2)
