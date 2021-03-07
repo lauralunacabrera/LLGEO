@@ -8,6 +8,7 @@ Great reference source:
 import numpy as np
 import numpy as np
 import scipy as sp
+import scipy.linalg
 
 # ------------------------------------------------------------------------------
 # Main Functions to get Response Spectra
@@ -159,7 +160,7 @@ def resp_spectra_wang(acc, dt, periods, zeta = 0.05):
     '''
 
     # Outputs
-    SD, PSV, PSA, SV, SA, ED = 6 * [np.empty(len(periods))]
+    SD, PSV, PSA, SV, SA, ED = 6 * [np.nan * np.ones(len(periods))]
 
     for i, T in enumerate(periods):
 
@@ -169,23 +170,25 @@ def resp_spectra_wang(acc, dt, periods, zeta = 0.05):
         K  = wn ** 2         # Stiffness (assumes m = 1)
 
         # Calculations
-        y = np.zeros(2, len(acc) + 1)
+        y = np.zeros([2, len(acc) + 1])
         A = np.array([[0, 1], [-K, -c]])
         Ae = sp.linalg.expm(A * dt)
-        AeB = np.linag.solve(A, (Ae - np.identity(2))) * np.array([[0, -1]]).T
+        AeB = np.matmul(np.linalg.solve(A, (Ae - np.identity(2))),
+                        np.array([0, 1]).reshape(-1, 1))
 
         # Iterate through acceleration time history
         for k in range(1, len(acc)):
-            y[:, k] = np.matmul(Ae, y[:, k-1]) + AeB * acc[k]
+            y[:, k] = (np.matmul(Ae, y[:, k-1].reshape(-1, 1)) + AeB * acc[k]).\
+                       reshape(-1, )
 
         # Determine peak responses
         sd = np.max(np.abs(y[0, :]))
-        SD[i]  = [ sd ]
-        PSV[i] = [ sd * wn ]
-        PSA[i] = [ sd * wn**2 ]
-        SV[i]  = [ np.max(np.abs(y[1, :]) )]
-        SA[i]  = [ np.max(np.abs([K * y[0, :] + c * y[1, :]]))]
-        ED[i]  = [ c * dt * np.sum(y[1, :] ** 2)]
+        SD[i]  = sd
+        PSV[i] = sd * wn
+        PSA[i] = sd * wn**2
+        SV[i]  = np.max(np.abs(y[1, :]))
+        SA[i]  = np.max(np.abs([K * y[0, :] + c * y[1, :]]))
+        ED[i]  = c * dt * np.sum(y[1, :] ** 2)
 
     return SD, PSV, PSA, SV, SA, ED
 
