@@ -682,7 +682,7 @@ def map_rf(elems, prop, z):
         name of the property being added to elems, used as column header.
         
     z : numpy array
-        random field realization (generally created by randfields package)
+        random field realization (generally created by rand_fields package)
         it is assumed that indexing in this array is of size n1xn2 if 2D. 
         Indexing is as follows:
           Z(1,1) is the lower left cell.

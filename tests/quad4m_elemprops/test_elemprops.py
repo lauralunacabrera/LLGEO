@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import llgeo.quad4m.geometry as q4m_geom
 import llgeo.quad4m.genfiles as q4m_files
 import llgeo.quad4m.props_elems as q4m_elems
-import llgeo.randfields.LAS as sim_LAS
+import llgeo.rand_fields.LAS as sim_LAS
 
 #%% Check function "elem_stresses"
 
