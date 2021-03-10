@@ -16,6 +16,13 @@ import scipy.linalg
 
 def resp_spectra_arduino(a, time, nstep, periods = np.logspace(-3, 1, 100) ):
     ''' Response spectra from acceleration time history.
+
+    TODO - Figure out what is happening with this function.
+    DO NOT USE THIS.
+    IT DOES NOT WORK PROPERLY.
+    Compared it to El Centro data and it doesn't make any sense.
+    Not sure what's going on here....
+    DO NOT USE THIS.
         
     Purpose
     -------
@@ -55,15 +62,15 @@ def resp_spectra_arduino(a, time, nstep, periods = np.logspace(-3, 1, 100) ):
     ''' 
 
     # Add initial zero value to acceleration and change units
-    a = np.inert(a, 0, 0)
+    a = np.insert(a, 0, 0)
 
     # Incremental circular frequency
-    dw = 2 * np.pi * time
+    dw = 2 * np.pi / time
 
     # Vector of circular frequency
     w = np.arange(0, (nstep + 1)*dw, dw)
 
-    # Fast Fourier Form of Acceleratopm
+    # Fast Fourier Form of Acceleration
     afft = np.fft.fft(a)
 
     # Arbitrary stiffness value 
@@ -73,7 +80,7 @@ def resp_spectra_arduino(a, time, nstep, periods = np.logspace(-3, 1, 100) ):
     damp = 0.05
 
     # Initalize response vectors
-    umax, vmax, amax = 3 * [np.zeros(len(periods))]
+    umax, vmax, amax = (np.zeros(len(periods)) for i in range(3))
 
     # Loop to compute spectral values at each period
     for j, p in enumerate(periods):
@@ -98,7 +105,7 @@ def resp_spectra_arduino(a, time, nstep, periods = np.logspace(-3, 1, 100) ):
             u[L] = h[L] * qfft[L]
 
         # Compute displcement in time domain (ignore imaginary part)
-        utime = np.real(np.ffit.ifft(u))
+        utime = np.real(np.fft.ifft(u))
 
         # Spectral displacement, velocity, and acceleration
         umax[j] = np.max(np.abs(utime))
@@ -113,16 +120,10 @@ def resp_spectra_wang(acc, dt, periods, zeta = 0.05):
         
     Purpose
     -------
-    This script calculates the peak response of an SDOF subject to acc using
-    Kelly and Richman 1969 pg. 138 algorithm. It uses a recursive evaluation of
-    Duhamels integral and parabolic fiting of discrete input data. 
+    This script calculates the peak response of an SDOF subject to acc.
+    It is a direct translation from the Matlab code included in Wang 1996.
+    It take no credit whatsover... and don't really understand all the math.
 
-    Note that this assumes zero initial conditions
-
-    Created by Justin MArtin and Andrew Sinclair of Auburn University in 2009 
-    for MATLAB and transcribed here. Original scrips can be downloaded for
-    free at this link: https://tinyurl.com/c87kvzr9.
-        
     Parameters
     ----------
     acc : numpy array
@@ -131,36 +132,46 @@ def resp_spectra_wang(acc, dt, periods, zeta = 0.05):
     dt : float
         Time step
 
-    T : float
-        Natural period of vibration of the SDOF
+    periods : numpy array
+        Natural periods of vibration of the SDOF
 
     zeta : float (optional)
         Critical damping ratio to be used in calculations.
-        Input as fractional number (0.05 would be 5% damping)     
+        Input as fractional number. Defaults to 0.05 (5% damping)     
         
     Returns
     -------
-    output_name : output_data_type
-        Description of the parameter.
-        Include assumptions, defaults, and limitations!
+    SD : numpy array
+        Relative displacement response spectrum
         
-    output_name : output_data_type
-        Description of the parameter.
-        Include assumptions, defaults, and limitations!
+    PSV : numpy array
+        Pseudo-relative-velocity
+        
+    PSA : numpy array
+        Pseudo-absolute-acceleration
+        
+    SA : numpy array
+        Absolute-acceleration
+        
+    SV : numpy array
+        Relative-velocity
+        
+    ED : numpy array
+        Spectra of energy dissipation per unit mass
         
     Notes
     -----
-    * Anything the user should know?
+    * I DID NOT WRITE THIS CODE. Just translated it and checked that it works.
         
     Refs
     ----
-    * Include *VERY DETAILED* bibliography. 
-      State publications, urls, pages, equations, etc.
-      YOU'RE. AN. ENGINEER. NOT. A. CODER.
+    * https://tinyurl.com/343pewus
+    * TODO - add a proper citation here
+
     '''
 
     # Outputs
-    SD, PSV, PSA, SV, SA, ED = 6 * [np.nan * np.ones(len(periods))]
+    SD, PSV, PSA, SV, SA, ED = (np.ones(len(periods)) for i in range(6))
 
     for i, T in enumerate(periods):
 
@@ -170,7 +181,7 @@ def resp_spectra_wang(acc, dt, periods, zeta = 0.05):
         K  = wn ** 2         # Stiffness (assumes m = 1)
 
         # Calculations
-        y = np.zeros([2, len(acc) + 1])
+        y = np.zeros([2, len(acc)])
         A = np.array([[0, 1], [-K, -c]])
         Ae = sp.linalg.expm(A * dt)
         AeB = np.matmul(np.linalg.solve(A, (Ae - np.identity(2))),
@@ -190,10 +201,13 @@ def resp_spectra_wang(acc, dt, periods, zeta = 0.05):
         SA[i]  = np.max(np.abs([K * y[0, :] + c * y[1, :]]))
         ED[i]  = c * dt * np.sum(y[1, :] ** 2)
 
-    return SD, PSV, PSA, SV, SA, ED
+    return SD, PSV, PSA, SA, SV, ED
 
 
 def resp_spectra_newmark(acc, dt, periods, zeta = 0.05, method = 'average'):
+    ''' TODO - code this as an excecise, even though it'll probably be way too
+               slow to use in production
+    ''' 
     pass
 
 
@@ -203,6 +217,8 @@ def resp_spectra_newmark(acc, dt, periods, zeta = 0.05, method = 'average'):
 
 def newmark_linear_SDOF(acc, dt, T, zeta = 0.05, method = 'average'):
     ''' Newmark method to solve a linear SDOF subject to an acc time history
+
+    DO NOT USE IT. IT HAS NOT BEEN CHECKED AND I CODED IT HALF ASLEEP.
         
     Purpose
     -------
@@ -247,6 +263,8 @@ def newmark_linear_SDOF(acc, dt, T, zeta = 0.05, method = 'average'):
     ----
     * Chopra(1995) Dynamics of Structures: Theory and Applications to Earthquake
         Engineering. See Page 167 Table 5.4.2: NEWMARK'S METHOD: LINEAR SYSTEMS
+
+    TODO - CHECK THIS! Pretty sure it will fail. 
     '''
 
     # Catch stability error
