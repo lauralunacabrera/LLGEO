@@ -4,13 +4,13 @@ DESCRIPTION:
 These functions read output files from QUAD4M (.out, .bug, .acc and .str) and 
 parse the results into Python data objects to allow the user to review the
 results.
-
 '''
-import pandas as pd
-import numpy as np
-import os
 
+import os
+import numpy as np
+import pandas as pd
 import llgeo.utilities.files as llgeo_fls
+
 
 # ------------------------------------------------------------------------------
 # Main Functions
@@ -91,7 +91,7 @@ def postprocessQ4M(model_path, model_name, out_path = None, out_file = None,
     # Stress histories file
     if read_flags['str']:
         flag, values = process_hist(model_path, model_name + '.str')
-        output.update({'acc_str' : values})
+        output.update({'str_hist' : values})
         success_flags += [flag]
 
     # Determine whether the model ran everything correctly
