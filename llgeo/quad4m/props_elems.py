@@ -4,8 +4,8 @@ DESCRIPTION:
 This module contains functions that help populate element properties for QUAD4M
 analysis, generally adding columns to the dataframe "elems" that then gets 
 exported to a ".q4r" file.
-
 '''
+
 import llgeo.props_nonlinear.darendeli_2011 as q4m_daran
 import numpy as np
 import pandas as pd
@@ -181,14 +181,14 @@ def add_vs_pfit(nodes, elems, pfits, rf = None, rf_type = 'ratio',
   # Add required columns if there is randomness
   if rf is not None:
     elems = map_rf(elems, 'rf', rf)
-    elems['vs_mean'] = np.empty(len(elems)) 
-    elems['vs_rand'] = np.empty(len(elems))
+    elems['vs_mean'] = np.empty(len(elems))
 
-  # Iterate through element soil columns (goes left to right)
+  # Initalize new columns in dataframe
   elems['vs'] = np.empty(len(elems)) 
   elems['Gmax'] = np.empty(len(elems))
   elems['depth'] = np.empty(len(elems))
 
+  # Iterate through element soil columns (goes left to right)
   for (i, soil_col), y_top in zip(elems.groupby('i'), top_ys_elems):
     
     # Get array of y-coords at center of element and unit weights
@@ -208,37 +208,35 @@ def add_vs_pfit(nodes, elems, pfits, rf = None, rf_type = 'ratio',
     vs_mean = np.array([c * d**power + plus for c, d, power, plus in
                         zip(consts, ds, powers, pluss)])
 
-    # If there is no randomness, add results
+    # Add depth values to elements table
     elems.loc[elems['i'] == i, 'depth'] = ds
     
-    # If there is no randomness, just add vs_mean and Gmax
+    # If there is no random field, then vs_final = vs_mean
     if rf is None:
-      Gm = (gs/9.81) * (vs_mean**2)
+      vs_final = vs_mean
 
-      # Export results
-      elems.loc[elems['i'] == i, 'vs']    = vs_mean
-      elems.loc[elems['i'] == i, 'Gmax']  = Gm
+    # If random field type is ratio, then multiply rf and mean vs to get final
+    elif rf_type == 'ratio':
+      vs_final  = soil_col['rf'].values * vs_mean
 
-    # Otherise, add the randomness here
-    else:      
-      # Get the random component and the final one, then calc Gmax
-      if rf_type == 'ratio':
-        vs_rand  = soil_col['rf'].values * vs_mean
+    # If random field is subs, then add mean vs and rf to get final
+    elif rf_type == 'subs':
+      vs_final  = soil_col['rf'].values + vs_mean
+    
+    # Otherwise, the random field type must not have been understood
+    else:
+      raise Exception('rf_type not recognized')
+    
+    # Turn vs to shear modulus
+    Gm = (gs/9.81) * (vs_final**2)
 
-      elif rf_type == 'norm':
-        vs_rand  = soil_col['rf'].values + vs_mean
-      
-      else:
-        raise Exception('rf_type not recognized')
-
-      vs_final = vs_mean + vs_rand
-      Gm = (gs / 9.81) * (vs_final ** 2)
-
-      # Export results
+    # Add results to elements dataframe
+    elems.loc[elems['i'] == i, 'vs'] = vs_final
+    elems.loc[elems['i'] == i, 'Gmax']    = Gm
+    
+    # Keep track of the "mean vs" if there was a random field 
+    if rf is not None:
       elems.loc[elems['i'] == i, 'vs_mean'] = vs_mean
-      elems.loc[elems['i'] == i, 'vs_rand'] = vs_rand
-      elems.loc[elems['i'] == i, 'vs']      = vs_final
-      elems.loc[elems['i'] == i, 'Gmax']    = Gm
 
   # Fix units if necessary
   if unit_fix:
