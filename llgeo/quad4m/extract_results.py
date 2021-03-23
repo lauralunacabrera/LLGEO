@@ -159,12 +159,15 @@ def get_peak_acc(result_dicts, x_loc = None, verbose = True,
     dfs = []
 
     # Iterate through provided result files
+    model_counter = 0
     for i, result in enumerate(result_dicts):
 
         # Check if model has failed
         if (check_success) & (not result['run_success']):
             print('Uh oh... ' + result['model'] + 'failed', flush = True)
             continue
+        else:
+            model_counter += 1
 
         # Print progress
         if verbose:
@@ -191,7 +194,7 @@ def get_peak_acc(result_dicts, x_loc = None, verbose = True,
             mask = (acc_df['x'] == x_loc)
 
         # Determine columns that are needed
-        if i == 0:
+        if model_counter == 0:
             cols = ['node_n', 'x', 'y', 'x_acc']
         else:
             cols = ['node_n', 'x_acc']
