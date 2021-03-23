@@ -5,9 +5,9 @@ with open('README.md', 'r') as fh:
     
 setuptools.setup(
     name = 'llgeo',
-    version = '0.0.15',
+    version = '0.0.16',
     author = 'Laura Luna',
-    author_email = 'lauralunacabrera@gmail.com',
+    author_email = 'lauralunacabrera@gmail.com', 
     description = 'Python library for Geotechnical Engineering',
     long_description = long_description,
     long_description_content_type = 'text/markdown',
