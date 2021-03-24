@@ -180,6 +180,7 @@ def get_peak_acc(result_dicts, x_loc = None, verbose = True,
         # Double check that acc_df is a dataframe
         # (will not be if model failed or wasnt processed correctly)
         if not isinstance(acc_df, pd.DataFrame):
+            model_counter -= 1
             msg = 'Watch out: model {:s} did not '.format(result['model'])
             msg+= 'run or process correctly because "peak_acc" key in result'
             msg+= ' dict does not contain  a dataframe'
@@ -194,7 +195,7 @@ def get_peak_acc(result_dicts, x_loc = None, verbose = True,
             mask = (acc_df['x'] == x_loc)
 
         # Determine columns that are needed
-        if model_counter == 0:
+        if model_counter == 1:
             cols = ['node_n', 'x', 'y', 'x_acc']
         else:
             cols = ['node_n', 'x_acc']
@@ -281,12 +282,15 @@ def get_peak_csr(result_dicts, elems_dfs, target_i = False,
     dfs = []
 
     # Iterate through pairs of element and results files
+    model_counter = 0
     for i, (elems, result) in enumerate(zip(elems_dfs, result_dicts)):
 
         # Check if model failed
         if (check_success) & (not result['run_success']):
             print('Uh oh... ' + result['model'] + 'failed', flush = True)
             continue
+        else:
+            model_counter += 1
 
         # Print progress
         if verbose:
@@ -299,6 +303,7 @@ def get_peak_csr(result_dicts, elems_dfs, target_i = False,
         # Double check that strs is a dataframe
         # (will not be if model failed or wasnt processed correctly)
         if not isinstance(strs, pd.DataFrame):
+            model_counter -= 1
             msg = 'Watch out: model {:s} did not '.format(result['model'])
             msg+= 'run or process correctly because "peak_str" key in result'
             msg+= ' dict does not contain  a dataframe'
@@ -324,7 +329,7 @@ def get_peak_csr(result_dicts, elems_dfs, target_i = False,
 
         # Create new dataframe and add to outputs
         col_name = result['model'] + '_csr'
-        if i == 0:
+        if model_counter == 1:
             new_df = pd.DataFrame({'n':ns, 'x':xs, 'y': ys, col_name:CSR})
         else:
             new_df = pd.DataFrame({'n':ns, col_name:CSR})
@@ -404,7 +409,6 @@ def get_SAspectra(result_dicts, n, Ts,  zeta = 0.05, verbose = True,
     # Initalize outputs
     if verbose: print('Now getting acc spectra')
     dfs = []
-
 
     # Iterate through provided result files
     for i, result in enumerate(result_dicts):
