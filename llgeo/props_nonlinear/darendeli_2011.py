@@ -1,11 +1,9 @@
 ''' Darendeli Non-linear Properties for Equivalent-Linear Ground Response Analyses
-
 DESCRIPTION:
 This module contains functions related to the non-linear dynamic properties of
 soils, specifically geared towards use in equivalent-linear ground response 
 analyses. The curves specified by Darendeli (2001) are coded here and can
 be used for a variety of applications.
-
 FUNCTIONS:
 This module contains the following functions:
     * params: calculates parameters for Darendeli curves, based on soil props
@@ -38,12 +36,16 @@ def params(PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
     -----------
     PI (%) : float
         Soil Plasticity Index
+
     OCR (-) : float
         Overconsolidation Ratio
+
     sigp_o (atm) : float
         In-situ mean effective confining stress (sigma'o)
+
     N (-) : float, optional
         Number of loading cycles. Not critical, defaults to 10 cycles.
+
     load_freq (Hz) : float, optional
         Loading frequency. Not critical, defaults to 1 Hz. 
 
@@ -51,16 +53,18 @@ def params(PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
     -------
     a (-) : float
         Curvature coefficient (set as constant Phi_5)
+
     b (-) : float
         Scaling coefficient on material damping curve 
+
     D_min (dec) : float
         Small strain damping. Ignores effect of high-amplitude cycling on Dmin
         (see Section 6.3 and Pg 144 in Ref_1)
+
     sstrn_r (dec) : float
         Reference strain, corresponds to the strain amplitude when shear modulus
         reduced to one half of Gmax (key characteristic of the hyperbolic model
         employed in Darendeli's research). See Section 6.2, Pg. 132 in Ref_1.
-
 
     Note
     ----
@@ -71,7 +75,6 @@ def params(PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
     ----------
     (1) Darendeli, M. B. (2001). Development of a New Family of
         Normalized Modulus Reduction and Material Damping Curves. 393.
-
         See : Section 7.4.1 Page 172, in Ref(1) 
               Table 8.12, Page 214, in Ref(1)
     '''
@@ -99,7 +102,6 @@ def params(PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
 
 def curves(sstrn, PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
     ''' Mean modulus reduction and damping curves
-
     Purpose
     -------
     Generate mean modulus reduction and material damping curves for a given set
@@ -111,13 +113,17 @@ def curves(sstrn, PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
     sstrn (dec) : array
         Shearing strains of interest (in %, not dec)
         Any numpy array will work, but should probably be log-spaced!
+
     a (-) : float
         Curvature coefficient (set as constant Phi_5)
+
     b (-) : float
         Scaling coefficient on material damping curve 
+
     D_min (dec) : float
         Small strain damping. Ignores effect of high-amplitude cycling on Dmin
         (see Section 6.3 and Pg 144 in Ref_1)
+
     sstrn_r (dec) : float
         Reference strain, corresponds to the strain amplitude when shear modulus
         reduced to one half of Gmax (key characteristic of the hyperbolic model
@@ -128,6 +134,7 @@ def curves(sstrn, PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
     G_red (dec) : array
         MEAN modulus reduction curve for material properties.
         Each value corresponds to shear strain levels given by sstrn
+
     D_adj (dec) : array
         MEAN damping curve for given properties.
         Each value corresponds to shear strain levels given by sstrn
@@ -144,7 +151,6 @@ def curves(sstrn, PI, OCR, sigp_o, N = 10, load_freq = 1, type = 'mean'):
         
         See : Section 7.4.1 Page 172, in Ref(1) 
               Table 8.12, Page 214, in Ref(1)
-
     '''
     a, b, D_min, sstrn_r = params(PI, OCR, sigp_o, N, load_freq, type)
 
