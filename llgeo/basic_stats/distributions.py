@@ -46,8 +46,10 @@ def sample_PMF(num_samples, pmf, x = False):
     return sim
 
 
-def dist_profile(depth, values, dist = 'norm', intv = 1, min_pts = 10, 
-                perc = [0.10, 0.25, 0.50, 0.75, 0.90], depth_lims = False):
+def dist_profile(depth: np.array, values: np.array,
+                 dist: str = 'norm', intv: int = 1, min_pts:int = 10, 
+                 perc: list = [0.10, 0.25, 0.50, 0.75, 0.90],
+                 depth_lims: list = []):
     ''' Fits distribution to a profile of values in intervals of width intv.
         
     Purpose
@@ -171,13 +173,75 @@ def dist_profile(depth, values, dist = 'norm', intv = 1, min_pts = 10,
 
     # Add covariance
     if dist == 'norm':
-        profile['norm_cov'] = profile['norm_stdv'] / profile['norm_mean']
+        profile['norm_cov']= profile['norm_stdv']/profile['norm_mean']
     elif dist == 'lognorm':
-        profile['lognorm_cov'] = profile['lognorm_stdv'] / profile['lognorm_mean']
+        profile['lognorm_cov']= profile['lognorm_stdv']/profile['lognorm_mean']
 
     return profile, bin_numbers
 
+# ------------------------------------------------------------------------------
+# Utilities / Wrappers
+# ------------------------------------------------------------------------------
     
+def fit_lognorm(x):
+    ''' Fits lognormal distribution to data '''
+
+    # Fit lognormal distribution
+    shape, loc, scale = stats.lognorm.fit(x, loc = 0)   
+    
+    # Get mean and variance
+    mean_x, var_x = stats.lognorm.stats(shape, loc, scale, moments = 'mv')
+    mean_x   = float(mean_x)
+    stdv_x   = var_x ** 0.5
+
+    # Get lognorm parameters
+    mean_lnx, stdv_lnx = norm_to_lognorm(mean_x, stdv_x)
+    
+    return(mean_x, stdv_x, mean_lnx, stdv_lnx)
+
+
+def lognorm_to_norm(mean_lnx,stdv_lnx):
+    '''Transforms lognormal estimators back to original units'''
+    var_lnx = stdv_lnx**2
+    mean_x = np.exp(mean_lnx+0.5*var_lnx)
+    var_x = mean_x**2*(np.exp(var_lnx)-1)
+    stdv_x = var_x**.5
+    return(mean_x,stdv_x)
+
+
+def norm_to_lognorm(mean_x, stdv_x):
+    ''' Transforms estimators to lognormal estimators '''
+
+    var_x   = stdv_x ** 2
+    var_lnx = np.log(1+var_x/(mean_x)**2)
+    mean_lnx = np.log(mean_x)-0.5*var_lnx
+    stdv_lnx = var_lnx**.5
+    return mean_lnx, stdv_lnx
+
+
+def lognorm_pdf(x, mean, stdv, logparams = False):
+    ''' Returns lognormal PDF over x given lognorm parameters
+    TODO - test this'''
+
+    args = lognorm_args(mean, stdv, logparams)
+    pdf = stats.lognorm.pdf(x, **args)
+    return pdf
+
+
+def lognorm_args(mean_lnx, stdv_lnx, logparams = True):
+    ''' Returns arguments to pass to scipy's lognorm function the traditional
+        way that the lognormal distribution is fit'''
+
+    if not logparams:
+        mean_lnx, stdv_lnx = norm_to_lognorm(mean_lnx, stdv_lnx)
+
+    args = {'s': stdv_lnx, 'loc':0, 'scale': np.exp(mean_lnx)}
+    return args
+
+# ------------------------------------------------------------------------------
+# DO NOT USE DO NOT USE DO NOT USE DO NOT USE DO NOT USE DO NOT USE DO NOT USE 
+# ------------------------------------------------------------------------------
+
 def lognorm_MME(x):
     ''' Returns the method of moments estimators for lognormal distribution'''
     mean_lnx = - np.log(sum(x**2))/2 +2*np.log(sum(x))-3/2*np.log(len(x))
@@ -204,44 +268,16 @@ def norm_pdf(x, mean, stdv):
     return pdf
 
 
-def lognorm_pdf(x, mean, stdv, logparams = False):
-    ''' Returns lognormal PDF over x given lognorm parameters
-    TODO - test this'''
-
-    args = lognorm_args(mean, stdv, logparams)
-    pdf = stats.lognorm.pdf(x, **args)
-    return pdf
-
-
 def py_lognorm_MLE(x):
     ''' Returns the maximum likelihood estimators for lognormal distribution, 
         using the generalized apprach implemented in Scipy
-        (allows for location shift)'''
+    '''
     # If we pass floc=0 in fit, this gives MLE paramters
     shape,loc,scale = stats.lognorm.fit(x,loc=0)   
     mean_x, var_x = stats.lognorm.stats(shape,loc,scale,moments='mv')
     mean_x   = float(mean_x)
     mean_lnx, stdv_lnx = norm_to_lognorm(mean_x, var_x ** 0.5)
-    return(mean_lnx,stdv_lnx)
-
-
-def lognorm_to_norm(mean_lnx,stdv_lnx):
-    '''Transforms lognormal estimators back to original units'''
-    var_lnx = stdv_lnx**2
-    mean_x = np.exp(mean_lnx+0.5*var_lnx)
-    var_x = mean_x**2*(np.exp(var_lnx)-1)
-    stdv_x = var_x**.5
-    return(mean_x,stdv_x)
-
-
-def norm_to_lognorm(mean_x, stdv_x):
-    ''' Transforms estimators to lognormal estimators '''
-
-    var_x   = stdv_x ** 2
-    var_lnx = np.log(1+var_x/(mean_x)**2)
-    mean_lnx = np.log(mean_x)-0.5*var_lnx
-    stdv_lnx = var_lnx**.5
-    return mean_lnx, stdv_lnx
+    return(mean_lnx, stdv_lnx)
 
 
 def get_all_fits(data):
@@ -263,13 +299,3 @@ def get_all_fits(data):
     fits_df = pd.DataFrame.from_dict(fits_dict)
     return(fits_df)
 
-
-def lognorm_args(mean_lnx, stdv_lnx, logparams = True):
-    ''' Returns arguments to pass to scipy's lognorm function the traditional
-        way that the lognormal distribution is fit'''
-
-    if not logparams:
-        mean_lnx, stdv_lnx = norm_to_lognorm(mean_lnx, stdv_lnx)
-
-    args = {'s': stdv_lnx, 'loc':0, 'scale': np.exp(mean_lnx)}
-    return args
