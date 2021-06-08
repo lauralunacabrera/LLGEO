@@ -18,7 +18,7 @@ import scipy.optimize as op
 
 def corr_fun_equisp(data, mean, std):
     ''' Calculates correlation function given equispaced data, mean, and std.
-        
+
     Purpose
     -------
     This function calculates the correlation coefficient as a function of
@@ -112,7 +112,7 @@ def corr_coeffs_1D(x, y):
     # Get basic parameters
     n = len(x)
     miu = np.mean(y)
-    std = np.std(y, ddof = 1)
+    std = np.std(y) # (Note that DDOF = 0)
 
     # Get distance matrix and all possible ij pairs
     dist_matrix = np.abs(x.reshape(n, 1) - x.reshape(1, n))
@@ -184,11 +184,12 @@ def corr_fun_nonequisp(sep_dist, corr_coeff, intv, min_pts):
     # Initalize output
     corr_fun = []
 
+    # Start with zero distance
+    mask_0 = (sep_dist == 0)
+    corr_fun = [ [0, 0, 0, np.sum(mask_0), np.average(corr_coeff[mask_0])] ]
+
     # Get separation distance bins in which to calculate correlation func.
-    centers = np.arange(0, np.max(sep_dist) + intv, intv) # Target loc of bins
-    edges = ( centers[:-1] + centers[1:] ) / 2 # Edges of bins in between center
-    edges = np.append([0], edges) # Add zero at the beginning
-    edges = np.append(edges, [ edges[-1] + intv/2 ]) # Add half interval at end
+    edges = np.arange(intv/2, np.max(sep_dist) + intv/2, intv) # Target loc of bins
 
     # Iterate through each separtion distance "bin"
     for d_from, d_to in zip(edges[:-1], edges[1:]):
@@ -205,16 +206,16 @@ def corr_fun_nonequisp(sep_dist, corr_coeff, intv, min_pts):
 
         # If there are less points that required, return NaNs
         if n <= min_pts:
-            corr_fun += [ [d_from, d_to, d_center, n, np.nan, np.nan] ]
+            corr_fun += [ [d_from, d_to, d_center, n, np.nan] ]
 
         # Otherwise, return correlation function parameters
         else:
-            mean = np.average(binned_coeff) # Talk to Fenton
-            stdv = np.std(binned_coeff, ddof = 1)
-            corr_fun += [ [d_from, d_to, d_center, n, mean, stdv] ]
+            # mean = np.average(binned_coeff) # Talk to Fenton
+            mean = np.sum(binned_coeff) / (np.sum(mask))
+            corr_fun += [ [d_from, d_to, d_center, n, mean] ]
 
     # Turn result into a pandas dataframe to make columns more clear
-    cols = ['dist_from', 'dist_to', 'dist_mid', 'num_pts', 'corr_fun', 'stdv']
+    cols = ['dist_from', 'dist_to', 'dist_mid', 'num_pts', 'corr_fun']
     corr_fun = pd.DataFrame(corr_fun, columns = cols)
     
     return corr_fun
@@ -224,7 +225,8 @@ def corr_fun_nonequisp(sep_dist, corr_coeff, intv, min_pts):
 # Functions for Many Processes
 # ------------------------------------------------------------------------------
 
-def many_corr_fun_nonequisp(df, xcol, ycol, icol, logT = False, fun_opts = {}):
+def many_corr_fun_nonequisp(df, xcol, ycol, icol, logT = False, min_result = 5,
+                            fun_opts = {}):
     ''' Estim. of correl. coeffs. and funct. for *many* nonequispaced processes
         
     Purpose
@@ -270,7 +272,7 @@ def many_corr_fun_nonequisp(df, xcol, ycol, icol, logT = False, fun_opts = {}):
     func_opts : dict (optional)
         Contains keyword arguments to be passed to "corr_fun_nonequisp", which
         estimates the correlation funciton from correlation coefficients.
-        It defaults to: {'intv' : 1, 'min_pts' : 10}
+        It defaults to: {'intv' : 1, 'min_pts' : 10, 'min_result':5}
         
     Returns
     -------
@@ -313,6 +315,9 @@ def many_corr_fun_nonequisp(df, xcol, ycol, icol, logT = False, fun_opts = {}):
         kwargs = {'x' : data[xcol].values.astype(float),
                   'y' : yvals} 
         dist_array, coeff_array = corr_coeffs_1D(**kwargs)
+
+        if np.sum(~np.isnan(coeff_array)) < min_result:
+            continue
 
         # Summarize correlation coefficient results in dataframe
         coeff = pd.DataFrame({icol : [id] * len(coeff_array),
@@ -383,8 +388,26 @@ def markov_fun(tau, rho,  theta_guess):
 
     # Get line of mest fit
     res = lambda theta: rho - np.exp(-2 * tau / theta)
-    markov_fit = op.least_squares(res, theta_guess)
+    markov_fit = op.least_squares(res, theta_guess, bounds = (0.01, 500))
     theta = markov_fit.x[0]
     markov = rho - markov_fit.fun
 
+    if theta == 0.01:
+        print('Uh oh, looks like lower bound was reached in least squres')
+    elif theta == 500:
+        print('Uh oh, looks like upper bound was reached in least squres')
+        
     return(theta, markov)
+
+
+def gaussian_fun(tau, rho, theta_guess):
+    ''' Fits a gaussian correlation function to sample correlation functions
+    '''
+
+    # Get line of mest fit
+    res = lambda theta: rho - np.exp(-np.pi * (tau / theta) ** 2)
+    gauss_fit = op.least_squares(res, theta_guess, bounds = (0.01, 100))
+    theta = gauss_fit.x[0]
+    gauss = rho - gauss_fit.fun
+
+    return(theta, gauss)
