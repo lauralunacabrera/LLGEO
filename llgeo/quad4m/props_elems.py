@@ -179,7 +179,7 @@ def add_vs_pfit(nodes, elems, pfits, rf = None, rf_type = 'ratio',
   top_ys_elems = np.convolve(top_ys_nodes, [0.5, 0.5], 'valid')
 
   # Add required columns if there is randomness
-  if rf is not None:
+  if (rf is not None):
     elems = map_rf(elems, 'rf', rf)
     elems['vs_mean'] = np.empty(len(elems))
 
@@ -485,7 +485,8 @@ def add_watertable(j, elems, unitw_water = 9807):
   return elems
 
 
-def add_darendeli_curves(elems, dec = 0, min_Gred = False):
+def add_darendeli_curves(elems, dec = 0, min_sigma = False, min_Gred = False,
+                         nearest_sigma = False, max_damp = False):
     ''' Generate Darendeli soil reduction curves and soil numbers.
         
     Purpose
@@ -507,9 +508,17 @@ def add_darendeli_curves(elems, dec = 0, min_Gred = False):
         then be used to get unique combinations of parameters, to avoid 
         creating duplicate curves.
 
+    min_sigma : float
+        Minimum mean confining stress to consider, in Pascals (CAREFUL!)
+        Consider using 25,000 Pa (25kPa ~ 0.25 atm)
+
     min_Gred : float
         Will put a minimum on the shear modulus reduction curves, so that 
         it does not go to very low numbers at large strains. (CAREFUL!!!)
+    
+    max_damp : float
+        Maximum damping to consider in % (0 to 100)
+        Consider using 20%
         
     Returns
     -------
@@ -528,11 +537,25 @@ def add_darendeli_curves(elems, dec = 0, min_Gred = False):
         mssg+= '   PI, OCRm and sigma_m columns must exist in elems dataframe'       
         raise Exception(elems)
     
+    # Extract as array for easier handling and round to dec places
     data = elems.loc[:, ['PI', 'OCR', 'sigma_m']].values
     data = np.round(data, dec)
+    
+    # If nearest sigma, will round to the nearest "nearest_sigma"
+    if nearest_sigma:
+        rounded_sigma = nearest_sigma * np.round(data[:, -1]/nearest_sigma)
+        data[:, -1] = rounded_sigma
+
+    # Apply minimum limit on mean confining stress, if needed
+    if min_sigma:
+      mask = (data[:, -1] <= min_sigma)
+      data[mask, -1] = min_sigma
+ 
+    # Get "unique" set of data
     uniq_data = np.unique(data, axis = 0)
     elems['s_num'] = np.empty(len(elems))
 
+    # Iterate through unique combination of properties to get the curves
     curves = []
     for i  in range(len(uniq_data)):
 
@@ -548,15 +571,19 @@ def add_darendeli_curves(elems, dec = 0, min_Gred = False):
                         'sigp_o': uniq_data[i, 2] / 101325}
 
         # Generate description of curve
-        description = 'PI={:2.0f} OCR={:2.0f} S={:4.2f}atm'.\
+        description = 'PI={:2.0f} OCR={:2.0f} S={:4.5f}atm'.\
                    format(*[daran_inputs[l] for l in ['PI', 'OCR', 'sigp_o']])
 
         # Get darandeli curves
         Gred, D_adjs = q4m_daran.curves(**daran_inputs)
 
-        # Add minimum cap if one was provided
+        # Add minimum cap on mod reduction if one was provided
         if min_Gred:
           Gred[Gred < min_Gred] = min_Gred
+
+        # Add maximum cap on damping if one was provided
+        if max_damp:
+          D_adjs[D_adjs > max_damp] = max_damp
 
         # Arrange in dictionary for output
         curves += [{'S_name': str(i + 1),
@@ -566,7 +593,7 @@ def add_darendeli_curves(elems, dec = 0, min_Gred = False):
                     'D_strn': daran_inputs['sstrn'],
                     'D_damp': D_adjs}]
 
-    return curves, elems
+    return uniq_data, curves, elems
 
 
 # ------------------------------------------------------------------------------
