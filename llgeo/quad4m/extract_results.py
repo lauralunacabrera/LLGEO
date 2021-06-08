@@ -325,7 +325,7 @@ def get_peak_csr(result_dicts, elems_dfs, target_i = False,
 
         # Get cyclic stress ratio 
         sigxy = np.array([float(strs.loc[strs['n'] == n, 'sigxy']) for n in ns])
-        CSR = sigxy / sv
+        CSR = sigxy / sv # THIS IS MISSING 0.65 YOU GOTTA ADD IT LATER
 
         # Create new dataframe and add to outputs
         col_name = result['model'] + '_csr'
@@ -477,6 +477,7 @@ def extract_results(in_path, result_files, elem_files, out_path, out_id,
     # Read files and basic set-up
     # --------------------------------------------------------------------------
     
+    # TODO - this kills memory for large stages. Do better.
     # Read all the result files
     result_dicts = [llgeo_fls.read_pkl(in_path, f) for f in result_files]
 
