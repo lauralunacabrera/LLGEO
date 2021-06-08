@@ -2,22 +2,13 @@
 
 DESCRIPTION:
 This module contains functions that help create input files for QUAD4M, so that 
-the program can be automized.
-
-MAIN FUNCTIONS:
-This module contains the following functions:
-    * gen_q4r: makes QUAD4M input file based on settings, elems, & nodes.
+the program can be automated.
 '''
 
-# ------------------------------------------------------------------------------
-# Import Modules
-# ------------------------------------------------------------------------------
-# Standard libaries
+# Import modules
 import numpy as np
 import pandas as pd
 import os
-
-# LLGEO modules
 import llgeo.utilities.formatters as fff
 
 # ------------------------------------------------------------------------------
@@ -25,7 +16,7 @@ import llgeo.utilities.formatters as fff
 # ------------------------------------------------------------------------------
 
 def gen_q4r(Q, elems, nodes, out_path, out_file):
-    ''' generates QUAD4M input file (.q4r) from given settings, elems, and nodes.
+    ''' generates QUAD4M input file (.q4r) from given settings, elems, and nodes
     
     Purpose
     -------
@@ -62,7 +53,8 @@ def gen_q4r(Q, elems, nodes, out_path, out_file):
         
     Notes
     -----
-    * TODO-soon: Missing KSAV and NSLP functionalities. Will return False if asked.
+    * TODO-soon: Missing KSAV and NSLP functionalities.
+                 Will return False if asked.
 
     References
     ----------
@@ -72,9 +64,9 @@ def gen_q4r(Q, elems, nodes, out_path, out_file):
 
     '''
 
-    # Error Checking (only does basic stuff... I'm assuming user is smart)
+    # Error Checking (only does basic stuff... I'm assuming user is kinda smart)
     # --------------------------------------------------------------------------
-    # TODO-wishlist: change to logging?
+    # TODO-wishlist: maybe switch to proper logging instead?
 
     # Check that all required node and element information is present
     req_elem_cols = ['n', 'N1', 'N2', 'N3', 'N4',
@@ -192,8 +184,7 @@ def gen_q4r(Q, elems, nodes, out_path, out_file):
 
     # TODO-soon:
     #   Putting these here so I am aware of the work that still needs to be done
-    #   Don't think I'll be using the KSAV option
-    #   I will eventually have to figure out the seismic coefifcient part though
+    #   Don't think I'll be using the KSAV option ¯|_(ツ)_|¯
 
     # Restart file name descriptors (Lines 31 to 32)
     if Q['KSAV'] == 1:
@@ -296,15 +287,7 @@ def gen_dat(soil_curves, out_path, out_file):
     clim  = fmt01['cols'] * fmt01['width'] # max characters per line
 
     # Iterate through given soil_curves and add relevant lines
-    
     for soil in soil_curves:
-    
-        # THIS PART MAY BECOME AN ISSUE IN THE FUTURE!
-        # ----------------------------------------------------------------------
-        # Note: I'm still deciding on how to approach data handling, which means
-        #       the structure of inputs is likely to change.  I am adding the
-        #       next few lines to make it easier fix in the future if neeeded.
-        # TODO-soon: Figure out the final configuration for inputs to here.
 
         S_name = soil['S_name']
         S_desc = soil['S_desc']
