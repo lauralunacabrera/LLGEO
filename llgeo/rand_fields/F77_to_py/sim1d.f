@@ -177,7 +177,7 @@ c --------------------- get random field realization  ------------------
 
 c     Scale to proper distribution
       do 50 i = 1, n
-            Z(i) = zm + sqrt(zv) * Z(i)
+            Z(i) = zm + Z(i)
    50 continue
 
 c     Report progress, close, and end routine   
