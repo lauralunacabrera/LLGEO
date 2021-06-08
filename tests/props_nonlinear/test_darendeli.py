@@ -5,7 +5,17 @@ import matplotlib.image as mpimg
 
 import llgeo.props_nonlinear.darendeli_2011 as daren
 
-#
+
+# ------------------------------------------------------------------------------
+# Check that minimum sigma_m is working
+# ------------------------------------------------------------------------------
+
+
+
+
+# ------------------------------------------------------------------------------
+# Compare against paper figures
+# ------------------------------------------------------------------------------
 G_img = mpimg.imread('G_norm_check.JPG')
 D_img = mpimg.imread('D_mas_check.JPG')
 
@@ -16,9 +26,14 @@ N = 10       # Number of loading cycles ( - )
 frq = 10      # Loading frequency
 
 gam = np.logspace(-4, 0, 100)
-G_red, D_adjs, a, b, D_min, sstrn_r = daren.curves(gam, PI, OCR, sigma_o, N, frq, type = 'mean')
+G_red, D_adjs = daren.curves(gam, PI, OCR, sigma_o, N, frq, type = 'mean')
 
 #
+a, b, D_min, sstrn_r = daren.params(PI, OCR, sigma_o, N, frq, 'mean')
+    
+c = [np.nan, -1.1143 * a ** 2 + 1.8618 * a + 0.2523,
+                 +0.0805 * a ** 2 - 0.0710 * a - 0.0095, 
+                 -0.0005 * a ** 2 + 0.0002 * a + 0.0003 ]
 
 fig, axes = plt.subplots(2, 1, figsize = (4.4, 5))
 
