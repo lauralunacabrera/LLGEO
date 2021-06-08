@@ -29,7 +29,11 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 def plot_mesh(verts, verts_elems, ax, mesh_kwargs = {}):
 
     # Get default kwargs and update with provided mesh_kwargs
-    kwargs = {'edgecolor': 'k', 'linewidth': 0.2}
+    kwargs = {}
+    if 'edgecolor' not in mesh_kwargs:
+        kwargs.update({'edgecolor': 'k'})
+    if 'linewidth' not in mesh_kwargs:
+        kwargs.update({'linewidth': 0.2})
     kwargs.update(mesh_kwargs)
 
     # Plot mesh
@@ -41,8 +45,6 @@ def plot_mesh(verts, verts_elems, ax, mesh_kwargs = {}):
     return ax, pc
 
 
-
-
 def plot_mesh_node_prop(elems, nodes, prop, units, fig, ax,
                         sc_kwargs = {}):
 
@@ -52,8 +54,7 @@ def plot_mesh_node_prop(elems, nodes, prop, units, fig, ax,
     # TODO
 
 
-
-def plot_mesh_elem_prop(elems, nodes, prop, units, fig, ax,
+def plot_mesh_elem_prop(elems, nodes, prop, fig, ax, units = None,
                         colors = False, mesh_kwargs = {}, cb_kwargs = {}):
     ''' Plots filled mesh with colots mapped to values of prop
         
@@ -117,15 +118,15 @@ def plot_mesh_elem_prop(elems, nodes, prop, units, fig, ax,
         mesh_kwargs.update({'facecolors' : facecolors})
     
     else:
-        mesh_kwargs.update({'array' : vals, 'edgecolor': 'k', 'linewidth':0.005})
+        mesh_kwargs.update({'array' : vals})
 
  
     ax, pc = plot_mesh(verts, verts_elems, ax, mesh_kwargs)
 
     # Add colorbar 
     # TODO - fix this for discrete colors
-    kwargs = {'visible': True, 'orientation':'horizontal',
-              'ticklocation':'bottom'}
+    kwargs = {'visible' : True, 'orientation' : 'horizontal',
+              'ticklocation' : 'bottom'}
     kwargs.update(cb_kwargs)
 
     if kwargs['visible']:
@@ -135,17 +136,23 @@ def plot_mesh_elem_prop(elems, nodes, prop, units, fig, ax,
         cb  = plt.colorbar(pc, cax = cax, **kwargs)
                 
         # Colorbar plotting options
-        cax.xaxis.set_major_locator(ticker.MaxNLocator())
+        if 'ticks' not in kwargs.keys():
+            cax.xaxis.set_major_locator(ticker.MaxNLocator())
         cb.outline.set_visible(False)
-        cb.ax.tick_params(labelsize = 7, width = 0.1)
-        cb.set_label(prop + ' (' + units + ')', fontsize = 7)
+
+        if 'label' not in kwargs.keys():
+            if units:
+                cb.set_label(prop + ' (' + units + ')', fontsize = 7)
+            else:
+                cb.set_label(prop, fontsize = 7)
+
     else:
         cax = None
     
     # Plotting options
     ax.set_xbound(lower = np.min(nodes['x']), upper = np.max(nodes['x']))
     ax.set_ybound(lower = np.min(nodes['y']), upper = np.max(nodes['y']))
-    ax.axis('off')
+    # ax.axis('off')
     ax.axis('equal')
 
     return fig, ax, cax
@@ -201,3 +208,5 @@ def get_verts(elems, nodes):
         verts_elems += [elem]
 
     return(verts, verts_elems)
+
+    
