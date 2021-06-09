@@ -308,7 +308,7 @@ def get_peak_csr(result_dicts, elems_dfs, target_i = False,
             msg+= 'run or process correctly because "peak_str" key in result'
             msg+= ' dict does not contain  a dataframe'
             msg+= '\n Will skip this model but check what happened!'
-            print(msg)
+            print(msg, flush = True)
             continue
 
         # Get locations of interest
