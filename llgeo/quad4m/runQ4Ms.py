@@ -14,6 +14,7 @@ import os
 import numpy as np
 import time
 
+from concurrent.futures import ThreadPoolExecutor 
 # ------------------------------------------------------------------------------
 # Running QUAD4M stages
 # ------------------------------------------------------------------------------
@@ -193,6 +194,9 @@ def runQ4M(dir_q4m, dir_wrk, dir_out, file_q4r, file_dat, file_out, file_bug):
     # Escape if an error was found
     if err_flag > 0:
         return False
+
+    # Print progress
+    print('Now running model: ' + file_out, flush = True)
 
     # Make sure that slashes are made for a windows system
     dir_wrk_win = dir_wrk.replace('/', '\\')
@@ -374,6 +378,9 @@ def runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, nthreads,
        If post = True, it will do the post processing along the way
        if del_txt = True (and post = True), it will delete text files.
 
+    ^ ignore all that. very silly. will clean-up.
+    changed it to threadpool excecutor
+
     '''
 
     # Make sure that the lists of inputs are the same size
@@ -386,47 +393,15 @@ def runQ4Ms_parallel(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs, nthreads,
         mssg += 'All arguments must be of the same length'
         raise Exception(mssg)
 
-    # Split arguments into n groups (n = "nthreads") of approx. same size 
-    #   See: tinyurl.com/8knf90ek 
-    #   Grouped arguments are turned into dictionary so that they may be passed
-    #   as keyword arguments to the series runner 
-    stop = 0
-    grouped_args = []
-    q, r = divmod(len(dq4ms), nthreads)
+    pool = ThreadPoolExecutor(max_workers = nthreads)
+    for args in zip(dq4ms, dwrks, douts, fq4rs, fdats, fouts, fbugs):
+        if post:
+            args += (del_txt, read_flags)
+            pool.submit(runpostQ4M, *args)
+        else:
+            pool.submit(runQ4M, *args)
 
-    for i in range(1, nthreads + 1):
-        start = stop
-        stop += q + 1 if i <= r else q
-        grouped_args +=[{k : v[start:stop] for k, v in zip(arg_keys, arg_vals)}]
-
-    # Print starting confirmation
-    print('\nStarting {:d} Threads to Process {:d} Simulations'.\
-           format(nthreads, len(dq4ms)))
-    print('\t(~{:d} Simulations per Thread)'.format(q))
-    if post:
-        print('\tFiles will be post-processed along the way.')
-    if post & del_txt:
-        print('\tText files will be deleted')
-        print('\tA pickle per model will be saved\n')
-    
-    # Create a thread for each group
-    ts = []
-    for i, ga in enumerate(grouped_args):
-        print('\nThread {:d} will run:'.format(i + 1))
-        print([f.replace('.q4r', '') for f in ga['fq4rs']])
-        ga.update({'t': i + 1, 'del_txt': del_txt, 'post': post,
-                   'read_flags':read_flags})
-        t = Thread(target = runQ4Ms_series, kwargs = ga)
-        ts.append(t)
-
-    # Run and time :)
-    start = time.time()
-    [t.start() for t in ts]
-    [t.join() for t in ts]
-    end = time.time()
-
-    # Print ending confirmation and return
-    print('Concluded all sims in '+ str(int(end-start)) +' sec')
+    pool.shutdown(wait = True)
 
     
 # ------------------------------------------------------------------------------
