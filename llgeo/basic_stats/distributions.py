@@ -180,6 +180,56 @@ def dist_profile(depth: np.array, values: np.array,
     return profile, bin_numbers
 
 # ------------------------------------------------------------------------------
+# Poisson Process Time Frame Change
+# ------------------------------------------------------------------------------
+def change_poisson_timeframe(old_prob_exceed, old_time, new_time):
+    ''' Transforms probability of exceedance to a different timeframe
+        
+    Purpose
+    -------
+    Consider a Poisson process. The probability of the event occuring within 
+    at least once within time frame "t" is given by the exponential distribution
+    CDF:
+
+        P[T <= t ] = 1 - exp(- lambda * t)
+    
+    The probability of exceedance of an intensity measure within time t is the
+    same as the above formula (probability of seeing that event within time t).
+    
+    Therefore, given a probability of exceedance and a time frame, it is
+    straightforward to change it to a different time frame by:
+
+        1) Rearranging the above formula to solve for lambda
+        2) Using the calculated lambda and new time frame to get prob. exceed.
+        
+    Parameters
+    ----------
+    old_prob_exceedance : float or array of floats
+        Known probability of exceedance within a timeframe "old_time"
+        
+    old_time : float or array of floats
+        Time frame associated with "old_prob_exceedance"
+
+    new_time : float or array of floats
+        New time frame to consider
+        
+    Returns
+    -------
+    new_prob_exceedance : float or array of floats
+        Probability of exceedance during "new_time"
+    
+    Notes
+    ------
+    * Be careful with rounding errors
+    '''
+
+    # Calculate new probability of exceedance
+    new_prob_exceed = 1 - (1 - old_prob_exceed) ** (new_time / old_time)
+    
+    return new_prob_exceed
+
+
+# ------------------------------------------------------------------------------
 # Utilities / Wrappers
 # ------------------------------------------------------------------------------
     
