@@ -161,7 +161,7 @@ c     ---------- call LAS2G, depending on specified fncnam -------------
       write(iout, 1) 'Starting field generation'
 
 c     Change variance to 1, will adjust later
-      dpa = 1.d0
+c     ~ ~ dpa = 1.d0
 
 c     Generate uniform standard random field
       if (lcomp('dlavx2', fncnam)) then
@@ -182,7 +182,7 @@ c     Write info to stats file
 
 c     Scale to desired normal distribution (TO DO CHANGE HERE!)
       do 50 i = 1, N1*N2
-            Z(i) = zm + sqrt(zv) * Z(i)
+            Z(i) = zm + Z(i)
    50 continue
 
 c     Report progress, close, and end routine   
